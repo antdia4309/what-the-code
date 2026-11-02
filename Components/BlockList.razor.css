@@ -1,0 +1,103 @@
+.blocks {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.block {
+    --block: var(--move);
+    --block-shadow: var(--move-shadow);
+    border-radius: 10px;
+    background: var(--block);
+    box-shadow: 0 3px 0 var(--block-shadow);
+    color: #fff;
+    transition: outline-color 120ms ease;
+    outline: 3px solid transparent;
+    outline-offset: 2px;
+}
+
+.block-turn { --block: var(--turn); --block-shadow: var(--turn-shadow); }
+.block-loop { --block: var(--loop); --block-shadow: var(--loop-shadow); }
+
+.block.is-active { outline-color: var(--highlight); }
+.block.is-failed { outline-color: var(--danger); animation: wobble 360ms ease; }
+
+.block-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px 7px 12px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.block-label { flex: 1; }
+
+.counter {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.count {
+    min-width: 1.6em;
+    text-align: center;
+    font-weight: 600;
+    background: rgba(255, 255, 255, .22);
+    border-radius: 6px;
+    padding: 1px 4px;
+}
+
+.times { margin-left: 2px; }
+
+.count-btn, .remove-btn {
+    border: 0;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, .18);
+    color: inherit;
+    font: inherit;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.count-btn:hover:not(:disabled), .remove-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .32); }
+.count-btn:disabled, .remove-btn:disabled { opacity: .45; cursor: default; }
+.remove-btn { font-size: .8rem; }
+
+.loop-body {
+    margin: 0 8px 8px 18px;
+    padding: 8px;
+    border-radius: 8px;
+    background: var(--loop-well);
+    border: 2px dashed transparent;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.loop-body.is-target {
+    border-color: var(--highlight);
+    background: var(--loop-well-target);
+}
+
+.loop-empty {
+    margin: 0;
+    padding: 4px 2px;
+    font-size: .88rem;
+    color: var(--loop-ink);
+}
+
+@keyframes wobble {
+    0%, 100% { transform: translateX(0); }
+    30% { transform: translateX(-4px); }
+    65% { transform: translateX(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .block.is-failed { animation: none; }
+}

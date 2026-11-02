@@ -1,0 +1,82 @@
+@using WhatTheCode.Models
+
+<ol class="blocks @(Nested ? "nested" : "")">
+    @foreach (var item in Items)
+    {
+        var block = item;
+        <li class="block block-@KindClass(block.Kind) @(block.Id == ActiveId ? "is-active" : "") @(block.Id == FailedId ? "is-failed" : "")">
+            <div class="block-row">
+                <span class="block-label">@block.Label</span>
+
+                @if (block.IsLoop)
+                {
+                    <span class="counter">
+                        <button type="button" class="count-btn" aria-label="Repeat fewer times"
+                                disabled="@(Disabled || block.Count <= Instruction.MinRepeat)"
+                                @onclick="() => OnCountChange.InvokeAsync((block, -1))"
+                                @onclick:stopPropagation="true">−</button>
+                        <span class="count" aria-live="polite">@block.Count</span>
+                        <button type="button" class="count-btn" aria-label="Repeat more times"
+                                disabled="@(Disabled || block.Count >= Instruction.MaxRepeat)"
+                                @onclick="() => OnCountChange.InvokeAsync((block, 1))"
+                                @onclick:stopPropagation="true">+</button>
+                        <span class="times">times</span>
+                    </span>
+                }
+
+                <button type="button" class="remove-btn" aria-label="Remove @block.Label block"
+                        disabled="@Disabled"
+                        @onclick="() => OnRemove.InvokeAsync(block)"
+                        @onclick:stopPropagation="true">✕</button>
+            </div>
+
+            @if (block.IsLoop)
+            {
+                var isTarget = Target == block;
+                <div class="loop-body @(isTarget ? "is-target" : "")"
+                     role="button" tabindex="0"
+                     aria-pressed="@(isTarget ? "true" : "false")"
+                     aria-label="Add new blocks inside this Repeat"
+                     @onclick="() => OnSelectTarget.InvokeAsync(block)"
+                     @onclick:stopPropagation="true"
+                     @onkeydown="e => SelectOnKey(e, block)">
+                    @if (block.Body.Count == 0)
+                    {
+                        <p class="loop-empty">@(isTarget ? "New blocks land here" : "Tap here to add blocks inside")</p>
+                    }
+                    else
+                    {
+                        <BlockList Items="block.Body" Nested="true" Target="Target"
+                                   ActiveId="ActiveId" FailedId="FailedId" Disabled="Disabled"
+                                   OnRemove="OnRemove" OnSelectTarget="OnSelectTarget" OnCountChange="OnCountChange" />
+                    }
+                </div>
+            }
+        </li>
+    }
+</ol>
+
+@code {
+    [Parameter, EditorRequired] public List<Instruction> Items { get; set; } = default!;
+    [Parameter] public bool Nested { get; set; }
+    [Parameter] public Instruction? Target { get; set; }
+    [Parameter] public Guid? ActiveId { get; set; }
+    [Parameter] public Guid? FailedId { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<Instruction> OnRemove { get; set; }
+    [Parameter] public EventCallback<Instruction> OnSelectTarget { get; set; }
+    [Parameter] public EventCallback<(Instruction Block, int Delta)> OnCountChange { get; set; }
+
+    private static string KindClass(BlockKind kind) => kind switch
+    {
+        BlockKind.MoveForward => "move",
+        BlockKind.Repeat      => "loop",
+        _                     => "turn"
+    };
+
+    private async Task SelectOnKey(KeyboardEventArgs e, Instruction block)
+    {
+        if (e.Key is "Enter" or " ")
+            await OnSelectTarget.InvokeAsync(block);
+    }
+}

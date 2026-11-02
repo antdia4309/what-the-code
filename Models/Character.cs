@@ -2,6 +2,8 @@ namespace WhatTheCode.Models
 {
     public enum Direction { Up, Right, Down, Left }
 
+    public enum MoveResult { Moved, HitEdge, HitWall }
+
     public class Character
     {
         public int X { get; private set; }
@@ -10,9 +12,7 @@ namespace WhatTheCode.Models
 
         public Character(int startX, int startY, Direction startFacing = Direction.Right)
         {
-            X = startX;
-            Y = startY;
-            Facing = startFacing;
+            Reset(startX, startY, startFacing);
         }
 
         public void TurnLeft()
@@ -39,28 +39,26 @@ namespace WhatTheCode.Models
             };
         }
 
-        /// <summary>
-        /// Returns true if the move was legal (within grid bounds).
-        /// </summary>
-        public bool MoveForward(int gridCols, int gridRows)
+        /// <summary>The cell directly in front of the character.</summary>
+        public Cell NextCell() => Facing switch
         {
-            int nextX = X;
-            int nextY = Y;
+            Direction.Up    => new Cell(X, Y - 1),
+            Direction.Down  => new Cell(X, Y + 1),
+            Direction.Left  => new Cell(X - 1, Y),
+            _               => new Cell(X + 1, Y)
+        };
 
-            switch (Facing)
-            {
-                case Direction.Up:    nextY--; break;
-                case Direction.Down:  nextY++; break;
-                case Direction.Left:  nextX--; break;
-                case Direction.Right: nextX++; break;
-            }
+        /// <summary>Moves one cell forward unless the grid edge or a wall is in the way.</summary>
+        public MoveResult MoveForward(Grid grid)
+        {
+            var next = NextCell();
 
-            if (nextX < 0 || nextX >= gridCols || nextY < 0 || nextY >= gridRows)
-                return false;
+            if (!grid.IsInBounds(next.X, next.Y)) return MoveResult.HitEdge;
+            if (grid.IsWall(next.X, next.Y))      return MoveResult.HitWall;
 
-            X = nextX;
-            Y = nextY;
-            return true;
+            X = next.X;
+            Y = next.Y;
+            return MoveResult.Moved;
         }
 
         public void Reset(int startX, int startY, Direction startFacing = Direction.Right)

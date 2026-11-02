@@ -1,0 +1,391 @@
+@page "/"
+@rendermode InteractiveServer
+@implements IDisposable
+@using WhatTheCode.Models
+@using WhatTheCode.Services
+@inject ProgressStore Progress
+
+<PageTitle>What the CODE? · Level @_level.Number</PageTitle>
+
+<div class="play">
+    <header class="topbar">
+        <h1 class="logo">What the <span>CODE?</span></h1>
+
+        <nav class="level-path" aria-label="Levels">
+            <ol>
+                @foreach (var level in LevelCatalog.All)
+                {
+                    var l = level;
+                    var unlocked = Progress.IsUnlocked(l.Number);
+                    var stars = Progress.StarsFor(l.Number);
+                    <li>
+                        <button type="button"
+                                class="level-stop @(l == _level ? "is-current" : "") @(stars > 0 ? "is-solved" : "")"
+                                disabled="@(!unlocked || _running)"
+                                aria-current="@(l == _level ? "step" : null)"
+                                aria-label="@LevelLabel(l, unlocked, stars)"
+                                @onclick="() => SelectLevel(l)">
+                            <span class="level-num">@(unlocked ? l.Number.ToString() : "🔒")</span>
+                            <span class="level-stars" aria-hidden="true">@StarText(stars)</span>
+                        </button>
+                    </li>
+                }
+            </ol>
+        </nav>
+    </header>
+
+    <main class="stage">
+        <section class="board-side" aria-labelledby="level-title">
+            <h2 id="level-title" class="level-title">
+                <span class="level-tag">Level @_level.Number</span>
+                @_level.Title
+            </h2>
+
+            @if (_level.NewIdea is not null)
+            {
+                <p class="new-idea"><strong>New idea.</strong> @_level.NewIdea</p>
+            }
+
+            <GameGrid Session="_session" Crashed="_crashed" Celebrating="_status.Kind == StatusKind.Success" />
+
+            <div class="status status-@_status.Kind.ToString().ToLowerInvariant()" role="status" aria-live="polite">
+                @if (_status.Kind == StatusKind.Success)
+                {
+                    <p class="stars-earned" aria-label="@_earnedStars of 3 stars">@StarText(_earnedStars, showEmpty: true)</p>
+                }
+                <p>@_status.Message</p>
+                @if (_status.Kind == StatusKind.Success && NextLevel is not null)
+                {
+                    <button type="button" class="btn btn-next" @onclick="() => SelectLevel(NextLevel)">Next level</button>
+                }
+                else if (_status.Kind == StatusKind.Success)
+                {
+                    <p class="all-done">That's every level so far. Try earning three stars on each one.</p>
+                }
+            </div>
+
+            <p class="tip">@_level.Tip</p>
+        </section>
+
+        <section class="workshop" aria-label="Build your program">
+            <div class="palette">
+                <h3>Blocks</h3>
+                <div class="palette-blocks">
+                    @foreach (var kind in _level.Blocks)
+                    {
+                        var k = kind;
+                        <button type="button" class="palette-block palette-@PaletteClass(k)"
+                                disabled="@(_running || !CanAdd(k))"
+                                @onclick="() => AddBlock(k)">
+                            + @(new Instruction(k).Label)
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="program">
+                <div class="program-head">
+                    <h3>Your program</h3>
+                    <span class="block-count">@BlocksUsed @(BlocksUsed == 1 ? "block" : "blocks") · par @_level.Par</span>
+                </div>
+
+                @if (_target is not null)
+                {
+                    var outer = ParentLoopOf(_target, _program, null);
+                    <p class="target-note">
+                        Adding inside the @(outer is null ? "Repeat" : "inner Repeat").
+                        @if (outer is not null)
+                        {
+                            <button type="button" class="link-btn" disabled="@_running" @onclick="() => SelectTarget(outer)">Add after it, inside the outer Repeat</button>
+                            <span aria-hidden="true"> or </span>
+                        }
+                        <button type="button" class="link-btn" disabled="@_running" @onclick="() => SelectTarget(null)">Add to the end of the program</button>
+                    </p>
+                }
+
+                <div class="program-list @(_target is null ? "is-target" : "")"
+                     @onclick="() => SelectTarget(null)">
+                    @if (_program.Count == 0)
+                    {
+                        <p class="program-empty">Tap a block above to add it here.</p>
+                    }
+                    else
+                    {
+                        <BlockList Items="_program" Target="_target" ActiveId="_activeId" FailedId="_failedId"
+                                   Disabled="_running"
+                                   OnRemove="RemoveBlock" OnSelectTarget="SelectTarget" OnCountChange="ChangeCount" />
+                    }
+                </div>
+
+                <div class="run-controls">
+                    @if (_running)
+                    {
+                        <button type="button" class="btn btn-stop" @onclick="Stop">Stop</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-run" disabled="@(_program.Count == 0)" @onclick="RunAsync">▶ Run</button>
+                    }
+                    <button type="button" class="btn btn-quiet" disabled="@_running" @onclick="ResetBot">Reset bot</button>
+                    <button type="button" class="btn btn-quiet" disabled="@(_running || _program.Count == 0)" @onclick="ClearProgram">Clear</button>
+                </div>
+            </div>
+
+            <div class="bridge">
+                <h3>Your program in C#</h3>
+                <pre class="code" aria-label="Generated C# code"><code>@foreach (var line in CodeGenerator.Generate(_program))
+{<span class="code-line @(line.SourceId is not null && line.SourceId == (_activeId ?? _failedId) ? (_failedId is not null ? "is-failed" : "is-active") : "")">@line.Text
+</span>}</code></pre>
+            </div>
+        </section>
+    </main>
+</div>
+
+@code {
+    private enum StatusKind { Idle, Running, Success, Fail }
+    private record Status(StatusKind Kind, string Message);
+
+    private const int StepDelayMs = 420;
+
+    private Level _level = LevelCatalog.All[0];
+    private GameSession _session = new(LevelCatalog.All[0]);
+    private List<Instruction> _program = new();
+    private Instruction? _target;
+
+    private bool _running;
+    private bool _crashed;
+    private Guid? _activeId;
+    private Guid? _failedId;
+    private int _earnedStars;
+    private CancellationTokenSource? _cts;
+    private Status _status = new(StatusKind.Idle, "Build a program, then press Run.");
+
+    private int BlocksUsed => Instruction.CountBlocks(_program);
+
+    private Level? NextLevel => LevelCatalog.All.FirstOrDefault(l => l.Number == _level.Number + 1);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        await Progress.LoadAsync();
+        var resumeAt = LevelCatalog.All.FirstOrDefault(l => !Progress.IsSolved(l.Number)) ?? LevelCatalog.All[^1];
+        SelectLevel(resumeAt);
+        StateHasChanged();
+    }
+
+    // ---------- Level selection ----------
+
+    private void SelectLevel(Level level)
+    {
+        if (_running || !Progress.IsUnlocked(level.Number)) return;
+
+        _level = level;
+        _session = new GameSession(level);
+        _program = new();
+        _target = null;
+        ClearRunState();
+        _status = new(StatusKind.Idle, "Build a program, then press Run.");
+    }
+
+    // ---------- Editing ----------
+
+    private bool CanAdd(BlockKind kind) =>
+        kind != BlockKind.Repeat || _target is null || DepthOf(_target, _program, 1) < 2;
+
+    private void AddBlock(BlockKind kind)
+    {
+        if (_running || !CanAdd(kind)) return;
+
+        var block = new Instruction(kind);
+        (_target?.Body ?? _program).Add(block);
+
+        if (block.IsLoop) _target = block; // next blocks go inside the new loop
+        OnProgramEdited();
+    }
+
+    private void RemoveBlock(Instruction block)
+    {
+        if (_running) return;
+
+        if (_target is not null && (_target == block || Contains(block.Body, _target)))
+            _target = null;
+
+        RemoveFrom(_program, block);
+        OnProgramEdited();
+    }
+
+    private void ChangeCount((Instruction Block, int Delta) change)
+    {
+        if (_running) return;
+        change.Block.ChangeCount(change.Delta);
+        OnProgramEdited();
+    }
+
+    private void SelectTarget(Instruction? loop)
+    {
+        if (_running) return;
+        _target = loop;
+    }
+
+    private void ClearProgram()
+    {
+        _program.Clear();
+        _target = null;
+        OnProgramEdited();
+    }
+
+    private void OnProgramEdited()
+    {
+        _session.Reset();
+        ClearRunState();
+        _status = new(StatusKind.Idle, _program.Count == 0 ? "Build a program, then press Run." : "Ready. Press Run to try it.");
+    }
+
+    // ---------- Running ----------
+
+    private async Task RunAsync()
+    {
+        if (_running || _program.Count == 0) return;
+
+        _session.Reset();
+        ClearRunState();
+        _running = true;
+        _status = new(StatusKind.Running, "Running…");
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+        var steps = ProgramRunner.Flatten(_program);
+
+        try
+        {
+            await Task.Delay(150, token);
+
+            foreach (var step in steps)
+            {
+                _activeId = step.Source.Id;
+                var outcome = _session.Apply(step.Action);
+                StateHasChanged();
+
+                if (outcome is StepOutcome.HitWall or StepOutcome.HitEdge)
+                {
+                    _failedId = step.Source.Id;
+                    _activeId = null;
+                    _crashed = true;
+                    _status = new(StatusKind.Fail, outcome == StepOutcome.HitWall
+                        ? "Bonk! The highlighted block drove the bot into a wall. Try turning before it."
+                        : "Whoa, that's the edge of the board. The highlighted block tried to drive off it.");
+                    return;
+                }
+
+                await Task.Delay(StepDelayMs, token);
+            }
+
+            _activeId = null;
+
+            if (_session.OnFlag)
+            {
+                await CompleteLevelAsync();
+            }
+            else
+            {
+                _status = new(StatusKind.Fail, steps.Count >= ProgramRunner.MaxSteps
+                    ? "That program is too long to finish. Try smaller Repeat counts."
+                    : "The program finished, but the bot isn't on the flag. Add more blocks or check your turns.");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _activeId = null;
+            _status = new(StatusKind.Idle, "Stopped. Change your program or press Run again.");
+        }
+        finally
+        {
+            _running = false;
+            _cts?.Dispose();
+            _cts = null;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CompleteLevelAsync()
+    {
+        var used = BlocksUsed;
+        _earnedStars = _level.StarsFor(used);
+        await Progress.RecordAsync(_level.Number, _earnedStars);
+
+        var message = used <= _level.Par
+            ? $"Flag reached with {used} {(used == 1 ? "block" : "blocks")}. That's par. Nicely done."
+            : $"Flag reached with {used} blocks. Par is {_level.Par}. Can you do it with fewer?";
+        _status = new(StatusKind.Success, message);
+    }
+
+    private void Stop() => _cts?.Cancel();
+
+    private void ResetBot()
+    {
+        _session.Reset();
+        ClearRunState();
+        _status = new(StatusKind.Idle, _program.Count == 0 ? "Build a program, then press Run." : "Ready. Press Run to try it.");
+    }
+
+    private void ClearRunState()
+    {
+        _crashed = false;
+        _activeId = null;
+        _failedId = null;
+        _earnedStars = 0;
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+
+    // ---------- Helpers ----------
+
+    private static bool Contains(List<Instruction> list, Instruction target) =>
+        list.Any(i => i == target || Contains(i.Body, target));
+
+    private static bool RemoveFrom(List<Instruction> list, Instruction target) =>
+        list.Remove(target) || list.Any(i => RemoveFrom(i.Body, target));
+
+    /// <summary>How many loops deep a block sits (top-level loop = 1).</summary>
+    private static int DepthOf(Instruction target, List<Instruction> list, int depth)
+    {
+        foreach (var i in list)
+        {
+            if (i == target) return depth;
+            var inner = DepthOf(target, i.Body, depth + 1);
+            if (inner > 0) return inner;
+        }
+        return 0;
+    }
+
+    /// <summary>The loop that directly contains <paramref name="target"/>, or null if it's top level.</summary>
+    private static Instruction? ParentLoopOf(Instruction target, List<Instruction> list, Instruction? parent)
+    {
+        foreach (var i in list)
+        {
+            if (i == target) return parent;
+            var found = ParentLoopOf(target, i.Body, i);
+            if (found is not null) return found;
+        }
+        return null;
+    }
+
+    private static string PaletteClass(BlockKind kind) => kind switch
+    {
+        BlockKind.MoveForward => "move",
+        BlockKind.Repeat      => "loop",
+        _                     => "turn"
+    };
+
+    private static string StarText(int stars, bool showEmpty = false) =>
+        stars == 0 && !showEmpty ? "" : new string('★', stars) + new string('☆', 3 - stars);
+
+    private static string LevelLabel(Level l, bool unlocked, int stars) =>
+        !unlocked ? $"Level {l.Number}, locked"
+        : stars > 0 ? $"Level {l.Number}, {l.Title}, {stars} of 3 stars"
+        : $"Level {l.Number}, {l.Title}";
+}

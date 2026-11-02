@@ -1,0 +1,119 @@
+.board {
+    --cell: min(60px, calc((100vw - 3rem) / var(--cols)));
+    position: relative;
+    width: calc(var(--cell) * var(--cols));
+    height: calc(var(--cell) * var(--rows));
+    border-radius: 14px;
+    background: var(--mat);
+    box-shadow: 0 0 0 4px var(--mat-edge), 0 8px 0 4px var(--mat-edge);
+    overflow: hidden;
+}
+
+.cells {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), var(--cell));
+    grid-template-rows: repeat(var(--rows), var(--cell));
+}
+
+.cell {
+    box-shadow: inset 0 0 0 1px var(--mat-line);
+    display: grid;
+    place-items: center;
+    position: relative;
+}
+
+.cell.trail::after {
+    content: "";
+    width: 22%;
+    height: 22%;
+    border-radius: 50%;
+    background: var(--trail);
+}
+
+.cell.wall {
+    background:
+        linear-gradient(var(--wall-mortar) 0 0) 0 50% / 100% 2px no-repeat,
+        linear-gradient(var(--wall-mortar) 0 0) 50% 0 / 2px 50% no-repeat,
+        linear-gradient(var(--wall-mortar) 0 0) 25% 100% / 2px 50% no-repeat,
+        linear-gradient(var(--wall-mortar) 0 0) 75% 100% / 2px 50% no-repeat,
+        var(--wall);
+}
+
+.cell.flag {
+    background: var(--flag-tile);
+}
+
+.cell.flag.trail::after { display: none; }
+
+.flag-icon {
+    font-size: calc(var(--cell) * 0.5);
+    line-height: 1;
+}
+
+/* The bot glides between cells; the heading ring rotates, the face stays upright. */
+.bot {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--cell);
+    height: var(--cell);
+    display: grid;
+    place-items: center;
+    transform: translate(calc(var(--x) * var(--cell)), calc(var(--y) * var(--cell)));
+    transition: transform 280ms cubic-bezier(.3, .7, .3, 1);
+    pointer-events: none;
+}
+
+.bot-heading {
+    position: absolute;
+    inset: 12%;
+    border-radius: 50%;
+    background: var(--bot-ring);
+    box-shadow: 0 3px 0 var(--bot-ring-shadow);
+    transition: transform 220ms ease;
+}
+
+.bot-nose {
+    position: absolute;
+    top: 50%;
+    right: -9px;
+    width: 0;
+    height: 0;
+    transform: translateY(-50%);
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 11px solid var(--bot-ring);
+}
+
+.face-right .bot-heading { transform: rotate(0deg); }
+.face-down  .bot-heading { transform: rotate(90deg); }
+.face-left  .bot-heading { transform: rotate(180deg); }
+.face-up    .bot-heading { transform: rotate(270deg); }
+
+.bot-face {
+    position: relative;
+    font-size: calc(var(--cell) * 0.42);
+    line-height: 1;
+}
+
+.bot.crashed .bot-face { animation: bonk 380ms ease; }
+.bot.crashed .bot-heading { background: var(--danger); box-shadow: 0 3px 0 var(--danger-shadow); }
+.bot.crashed .bot-nose { border-left-color: var(--danger); }
+
+.bot.celebrating .bot-face { animation: hop 520ms ease 2; }
+
+@keyframes bonk {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px) rotate(-8deg); }
+    60% { transform: translateX(4px) rotate(6deg); }
+}
+
+@keyframes hop {
+    0%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bot, .bot-heading { transition: none; }
+    .bot.crashed .bot-face, .bot.celebrating .bot-face { animation: none; }
+}

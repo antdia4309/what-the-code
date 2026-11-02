@@ -1,82 +1,44 @@
 @using WhatTheCode.Models
+@using WhatTheCode.Services
 
-<div class="game-grid">
-    @for (int row = 0; row < Grid.Rows; row++)
-    {
-        <div class="grid-row">
-            @for (int col = 0; col < Grid.Columns; col++)
+<div class="board" style="--cols:@Session.Grid.Columns; --rows:@Session.Grid.Rows;"
+     role="img" aria-label="@Describe()">
+    <div class="cells">
+        @for (int row = 0; row < Session.Grid.Rows; row++)
+        {
+            @for (int col = 0; col < Session.Grid.Columns; col++)
             {
-                int x = col;
-                int y = row;
-                bool isCharacter = (x == Character.X && y == Character.Y);
-                bool isVisited   = Grid.Visited[x, y];
+                var isWall = Session.Grid.IsWall(col, row);
+                var isFlag = col == Session.Level.Flag.X && row == Session.Level.Flag.Y;
+                var isTrail = Session.Grid.Visited[col, row];
 
-                <div class="grid-cell @(isCharacter ? "cell-character" : "") @(isVisited && !isCharacter ? "cell-visited" : "")">
-                    @if (isCharacter)
+                <div class="cell @(isWall ? "wall" : "") @(isFlag ? "flag" : "") @(isTrail && !isWall ? "trail" : "")">
+                    @if (isFlag)
                     {
-                        <span class="character-icon @GetFacingClass()">🤖</span>
+                        <span class="flag-icon" aria-hidden="true">🚩</span>
                     }
                 </div>
             }
+        }
+    </div>
+
+    <div class="bot @FacingClass @(Crashed ? "crashed" : "") @(Celebrating ? "celebrating" : "")"
+         style="--x:@Session.Bot.X; --y:@Session.Bot.Y;" aria-hidden="true">
+        <div class="bot-heading">
+            <span class="bot-nose"></span>
         </div>
-    }
+        <span class="bot-face">🤖</span>
+    </div>
 </div>
 
 @code {
-    [Parameter] public Grid Grid { get; set; } = default!;
-    [Parameter] public Character Character { get; set; } = default!;
+    [Parameter, EditorRequired] public GameSession Session { get; set; } = default!;
+    [Parameter] public bool Crashed { get; set; }
+    [Parameter] public bool Celebrating { get; set; }
 
-    private string GetFacingClass() => Character.Facing switch
-    {
-        Direction.Up    => "face-up",
-        Direction.Right => "face-right",
-        Direction.Down  => "face-down",
-        Direction.Left  => "face-left",
-        _               => ""
-    };
+    private string FacingClass => $"face-{Session.Bot.Facing.ToString().ToLowerInvariant()}";
+
+    private string Describe() =>
+        $"{Session.Grid.Columns} by {Session.Grid.Rows} board. Bot at column {Session.Bot.X + 1}, row {Session.Bot.Y + 1}, " +
+        $"facing {Session.Bot.Facing.ToString().ToLowerInvariant()}. Flag at column {Session.Level.Flag.X + 1}, row {Session.Level.Flag.Y + 1}.";
 }
-
-<style>
-    .game-grid {
-        display: inline-flex;
-        flex-direction: column;
-        gap: 2px;
-        background: #1a1a2e;
-        padding: 8px;
-        border-radius: 8px;
-        border: 2px solid #00d4ff;
-    }
-
-    .grid-row {
-        display: flex;
-        gap: 2px;
-    }
-
-    .grid-cell {
-        width: 56px;
-        height: 56px;
-        background: #16213e;
-        border: 1px solid #0f3460;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.6rem;
-        transition: background 0.2s ease;
-    }
-
-    .cell-visited {
-        background: #0f3460;
-    }
-
-    .cell-character {
-        background: #00d4ff22;
-        border-color: #00d4ff;
-    }
-
-    /* Rotation based on facing direction */
-    .face-up    { display: inline-block; transform: rotate(-90deg); }
-    .face-right { display: inline-block; transform: rotate(0deg);   }
-    .face-down  { display: inline-block; transform: rotate(90deg);  }
-    .face-left  { display: inline-block; transform: rotate(180deg); }
-</style>

@@ -1,10 +1,13 @@
 using WhatTheCode.Components;
+using WhatTheCode.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddScoped<ProgressStore>();
 
 var app = builder.Build();
 
