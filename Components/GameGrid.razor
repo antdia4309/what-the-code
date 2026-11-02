@@ -9,7 +9,7 @@
             @for (int col = 0; col < Session.Grid.Columns; col++)
             {
                 var isWall = Session.Grid.IsWall(col, row);
-                var isFlag = col == Session.Level.Flag.X && row == Session.Level.Flag.Y;
+                var isFlag = col == Session.Board.Flag.X && row == Session.Board.Flag.Y;
                 var isTrail = Session.Grid.Visited[col, row];
 
                 <div class="cell @(isWall ? "wall" : "") @(isFlag ? "flag" : "") @(isTrail && !isWall ? "trail" : "")">
@@ -40,5 +40,5 @@
 
     private string Describe() =>
         $"{Session.Grid.Columns} by {Session.Grid.Rows} board. Bot at column {Session.Bot.X + 1}, row {Session.Bot.Y + 1}, " +
-        $"facing {Session.Bot.Facing.ToString().ToLowerInvariant()}. Flag at column {Session.Level.Flag.X + 1}, row {Session.Level.Flag.Y + 1}.";
+        $"facing {Session.Bot.Facing.ToString().ToLowerInvariant()}. Flag at column {Session.Board.Flag.X + 1}, row {Session.Board.Flag.Y + 1}.";
 }

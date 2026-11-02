@@ -15,38 +15,36 @@ namespace WhatTheCode.Models
             Reset(startX, startY, startFacing);
         }
 
-        public void TurnLeft()
+        public static Direction LeftOf(Direction d) => d switch
         {
-            Facing = Facing switch
-            {
-                Direction.Up    => Direction.Left,
-                Direction.Left  => Direction.Down,
-                Direction.Down  => Direction.Right,
-                Direction.Right => Direction.Up,
-                _               => Facing
-            };
-        }
+            Direction.Up    => Direction.Left,
+            Direction.Left  => Direction.Down,
+            Direction.Down  => Direction.Right,
+            _               => Direction.Up
+        };
 
-        public void TurnRight()
+        public static Direction RightOf(Direction d) => d switch
         {
-            Facing = Facing switch
-            {
-                Direction.Up    => Direction.Right,
-                Direction.Right => Direction.Down,
-                Direction.Down  => Direction.Left,
-                Direction.Left  => Direction.Up,
-                _               => Facing
-            };
-        }
+            Direction.Up    => Direction.Right,
+            Direction.Right => Direction.Down,
+            Direction.Down  => Direction.Left,
+            _               => Direction.Up
+        };
 
-        /// <summary>The cell directly in front of the character.</summary>
-        public Cell NextCell() => Facing switch
+        public void TurnLeft()  => Facing = LeftOf(Facing);
+        public void TurnRight() => Facing = RightOf(Facing);
+
+        /// <summary>The neighbouring cell in a given direction.</summary>
+        public Cell CellToward(Direction d) => d switch
         {
             Direction.Up    => new Cell(X, Y - 1),
             Direction.Down  => new Cell(X, Y + 1),
             Direction.Left  => new Cell(X - 1, Y),
             _               => new Cell(X + 1, Y)
         };
+
+        /// <summary>The cell directly in front of the character.</summary>
+        public Cell NextCell() => CellToward(Facing);
 
         /// <summary>Moves one cell forward unless the grid edge or a wall is in the way.</summary>
         public MoveResult MoveForward(Grid grid)

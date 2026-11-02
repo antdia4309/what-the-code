@@ -9,3 +9,6 @@ obj/
 *.user
 *.suo
 .DS_Store
+
+# Publish output
+release/

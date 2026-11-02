@@ -11,12 +11,11 @@ namespace WhatTheCode.Models
         /// <summary>Shown when a level introduces a new block or idea.</summary>
         public string? NewIdea { get; init; }
 
-        public required int Columns { get; init; }
-        public required int Rows { get; init; }
-        public required Cell Start { get; init; }
-        public Direction StartFacing { get; init; } = Direction.Right;
-        public required Cell Flag { get; init; }
-        public IReadOnlyList<Cell> Walls { get; init; } = Array.Empty<Cell>();
+        /// <summary>
+        /// The boards this level is played on. With more than one, a single program
+        /// has to reach the flag on every board.
+        /// </summary>
+        public required IReadOnlyList<Board> Boards { get; init; }
 
         /// <summary>Fewest blocks needed for three stars.</summary>
         public required int Par { get; init; }

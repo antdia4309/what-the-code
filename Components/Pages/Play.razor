@@ -1,5 +1,4 @@
 @page "/"
-@rendermode InteractiveServer
 @implements IDisposable
 @using WhatTheCode.Models
 @using WhatTheCode.Services
@@ -18,7 +17,7 @@
                     var l = level;
                     var unlocked = Progress.IsUnlocked(l.Number);
                     var stars = Progress.StarsFor(l.Number);
-                    <li>
+                    <li class="@(l.Number == PartTwoStart ? "part-start" : "")">
                         <button type="button"
                                 class="level-stop @(l == _level ? "is-current" : "") @(stars > 0 ? "is-solved" : "")"
                                 disabled="@(!unlocked || _running)"
@@ -46,7 +45,26 @@
                 <p class="new-idea"><strong>New idea.</strong> @_level.NewIdea</p>
             }
 
-            <GameGrid Session="_session" Crashed="_crashed" Celebrating="_status.Kind == StatusKind.Success" />
+            @if (_sessions.Count > 1)
+            {
+                <div class="board-tabs" role="tablist" aria-label="Boards">
+                    <span class="board-tabs-note">One program has to solve all @_sessions.Count boards.</span>
+                    @for (int i = 0; i < _sessions.Count; i++)
+                    {
+                        var index = i;
+                        <button type="button" role="tab"
+                                class="board-tab board-@_boardStates[index].ToString().ToLowerInvariant()"
+                                aria-selected="@(index == _shown ? "true" : "false")"
+                                disabled="@_running"
+                                @onclick="() => _shown = index">
+                            Board @(index + 1)
+                            <span aria-hidden="true">@BoardMark(_boardStates[index])</span>
+                        </button>
+                    }
+                </div>
+            }
+
+            <GameGrid Session="ShownSession" Crashed="_crashedBoard == _shown" Celebrating="_status.Kind == StatusKind.Success" />
 
             <div class="status status-@_status.Kind.ToString().ToLowerInvariant()" role="status" aria-live="polite">
                 @if (_status.Kind == StatusKind.Success)
@@ -77,7 +95,7 @@
                         <button type="button" class="palette-block palette-@PaletteClass(k)"
                                 disabled="@(_running || !CanAdd(k))"
                                 @onclick="() => AddBlock(k)">
-                            + @(new Instruction(k).Label)
+                            + @Instruction.LabelFor(k)
                         </button>
                     }
                 </div>
@@ -91,15 +109,15 @@
 
                 @if (_target is not null)
                 {
-                    var outer = ParentLoopOf(_target, _program, null);
+                    var owner = FindOwner(_target, _program);
                     <p class="target-note">
-                        Adding inside the @(outer is null ? "Repeat" : "inner Repeat").
-                        @if (outer is not null)
+                        Adding inside @TargetName(owner).
+                        <button type="button" class="link-btn" disabled="@_running" @onclick="StepOut">Add after that block</button>
+                        @if (owner?.Parent != _program)
                         {
-                            <button type="button" class="link-btn" disabled="@_running" @onclick="() => SelectTarget(outer)">Add after it, inside the outer Repeat</button>
-                            <span aria-hidden="true"> or </span>
+                            <span aria-hidden="true"> · </span>
+                            <button type="button" class="link-btn" disabled="@_running" @onclick="() => SelectTarget(null)">Add to the end</button>
                         }
-                        <button type="button" class="link-btn" disabled="@_running" @onclick="() => SelectTarget(null)">Add to the end of the program</button>
                     </p>
                 }
 
@@ -113,7 +131,8 @@
                     {
                         <BlockList Items="_program" Target="_target" ActiveId="_activeId" FailedId="_failedId"
                                    Disabled="_running"
-                                   OnRemove="RemoveBlock" OnSelectTarget="SelectTarget" OnCountChange="ChangeCount" />
+                                   OnRemove="RemoveBlock" OnSelectTarget="SelectTarget"
+                                   OnCountChange="ChangeCount" OnCycleCondition="CycleCondition" />
                     }
                 </div>
 
@@ -126,7 +145,7 @@
                     {
                         <button type="button" class="btn btn-run" disabled="@(_program.Count == 0)" @onclick="RunAsync">▶ Run</button>
                     }
-                    <button type="button" class="btn btn-quiet" disabled="@_running" @onclick="ResetBot">Reset bot</button>
+                    <button type="button" class="btn btn-quiet" disabled="@_running" @onclick="ResetBoards">Reset bot</button>
                     <button type="button" class="btn btn-quiet" disabled="@(_running || _program.Count == 0)" @onclick="ClearProgram">Clear</button>
                 </div>
             </div>
@@ -134,7 +153,7 @@
             <div class="bridge">
                 <h3>Your program in C#</h3>
                 <pre class="code" aria-label="Generated C# code"><code>@foreach (var line in CodeGenerator.Generate(_program))
-{<span class="code-line @(line.SourceId is not null && line.SourceId == (_activeId ?? _failedId) ? (_failedId is not null ? "is-failed" : "is-active") : "")">@line.Text
+{<span class="code-line @LineClass(line)">@line.Text
 </span>}</code></pre>
             </div>
         </section>
@@ -143,26 +162,38 @@
 
 @code {
     private enum StatusKind { Idle, Running, Success, Fail }
+    private enum BoardState { Untried, Passed, Failed }
     private record Status(StatusKind Kind, string Message);
 
-    private const int StepDelayMs = 420;
+    private const int StepDelayMs = 380;
+    private const int BetweenBoardsMs = 650;
+    private const int MaxNesting = 3;
+    private const int PartTwoStart = 7;
+
+    private const string ReadyEmpty = "Build a program, then press Run.";
+    private const string ReadyToRun = "Ready. Press Run to try it.";
 
     private Level _level = LevelCatalog.All[0];
-    private GameSession _session = new(LevelCatalog.All[0]);
+    private List<GameSession> _sessions = new();
+    private BoardState[] _boardStates = Array.Empty<BoardState>();
+    private int _shown;
+
     private List<Instruction> _program = new();
-    private Instruction? _target;
+    private List<Instruction>? _target; // null means "end of the main program"
 
     private bool _running;
-    private bool _crashed;
+    private int? _crashedBoard;
     private Guid? _activeId;
     private Guid? _failedId;
     private int _earnedStars;
     private CancellationTokenSource? _cts;
-    private Status _status = new(StatusKind.Idle, "Build a program, then press Run.");
+    private Status _status = new(StatusKind.Idle, ReadyEmpty);
 
+    private GameSession ShownSession => _sessions[_shown];
     private int BlocksUsed => Instruction.CountBlocks(_program);
-
     private Level? NextLevel => LevelCatalog.All.FirstOrDefault(l => l.Number == _level.Number + 1);
+
+    protected override void OnInitialized() => LoadLevel(LevelCatalog.All[0]);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -170,37 +201,43 @@
 
         await Progress.LoadAsync();
         var resumeAt = LevelCatalog.All.FirstOrDefault(l => !Progress.IsSolved(l.Number)) ?? LevelCatalog.All[^1];
-        SelectLevel(resumeAt);
+        LoadLevel(resumeAt);
         StateHasChanged();
     }
 
-    // ---------- Level selection ----------
+    // ---------- Levels ----------
 
     private void SelectLevel(Level level)
     {
         if (_running || !Progress.IsUnlocked(level.Number)) return;
+        LoadLevel(level);
+    }
 
+    private void LoadLevel(Level level)
+    {
         _level = level;
-        _session = new GameSession(level);
+        _sessions = level.Boards.Select(b => new GameSession(b)).ToList();
+        _boardStates = new BoardState[_sessions.Count];
+        _shown = 0;
         _program = new();
         _target = null;
         ClearRunState();
-        _status = new(StatusKind.Idle, "Build a program, then press Run.");
+        _status = new(StatusKind.Idle, ReadyEmpty);
     }
 
     // ---------- Editing ----------
 
     private bool CanAdd(BlockKind kind) =>
-        kind != BlockKind.Repeat || _target is null || DepthOf(_target, _program, 1) < 2;
+        !new Instruction(kind).IsContainer || Depth(_target) < MaxNesting;
 
     private void AddBlock(BlockKind kind)
     {
         if (_running || !CanAdd(kind)) return;
 
         var block = new Instruction(kind);
-        (_target?.Body ?? _program).Add(block);
+        (_target ?? _program).Add(block);
 
-        if (block.IsLoop) _target = block; // next blocks go inside the new loop
+        if (block.IsContainer) _target = block.Body; // next blocks go inside the new block
         OnProgramEdited();
     }
 
@@ -208,7 +245,7 @@
     {
         if (_running) return;
 
-        if (_target is not null && (_target == block || Contains(block.Body, _target)))
+        if (_target is not null && block.ChildLists.Any(l => l == _target || ContainsList(l, _target)))
             _target = null;
 
         RemoveFrom(_program, block);
@@ -222,10 +259,25 @@
         OnProgramEdited();
     }
 
-    private void SelectTarget(Instruction? loop)
+    private void CycleCondition(Instruction block)
     {
         if (_running) return;
-        _target = loop;
+        block.CycleCondition();
+        OnProgramEdited();
+    }
+
+    private void SelectTarget(List<Instruction>? list)
+    {
+        if (_running) return;
+        _target = list;
+    }
+
+    /// <summary>Move the insertion point to just after the block that owns the current target.</summary>
+    private void StepOut()
+    {
+        if (_running || _target is null) return;
+        var parent = FindOwner(_target, _program)?.Parent;
+        _target = parent == _program ? null : parent;
     }
 
     private void ClearProgram()
@@ -237,9 +289,7 @@
 
     private void OnProgramEdited()
     {
-        _session.Reset();
-        ClearRunState();
-        _status = new(StatusKind.Idle, _program.Count == 0 ? "Build a program, then press Run." : "Ready. Press Run to try it.");
+        ResetBoards();
     }
 
     // ---------- Running ----------
@@ -248,50 +298,59 @@
     {
         if (_running || _program.Count == 0) return;
 
-        _session.Reset();
-        ClearRunState();
+        ResetBoards();
         _running = true;
         _status = new(StatusKind.Running, "Running…");
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
-        var steps = ProgramRunner.Flatten(_program);
 
         try
         {
-            await Task.Delay(150, token);
-
-            foreach (var step in steps)
+            for (int board = 0; board < _sessions.Count; board++)
             {
-                _activeId = step.Source.Id;
-                var outcome = _session.Apply(step.Action);
-                StateHasChanged();
+                _shown = board;
+                var session = _sessions[board];
+                var runner = new ProgramRunner(session);
+                var prefix = _sessions.Count > 1 ? $"Board {board + 1}: " : "";
 
-                if (outcome is StepOutcome.HitWall or StepOutcome.HitEdge)
+                StateHasChanged();
+                await Task.Delay(board == 0 ? 150 : BetweenBoardsMs, token);
+
+                foreach (var step in runner.Run(_program))
                 {
-                    _failedId = step.Source.Id;
-                    _activeId = null;
-                    _crashed = true;
-                    _status = new(StatusKind.Fail, outcome == StepOutcome.HitWall
-                        ? "Bonk! The highlighted block drove the bot into a wall. Try turning before it."
-                        : "Whoa, that's the edge of the board. The highlighted block tried to drive off it.");
+                    _activeId = step.Source.Id;
+                    var outcome = session.Apply(step.Action);
+                    StateHasChanged();
+
+                    if (outcome is StepOutcome.HitWall or StepOutcome.HitEdge)
+                    {
+                        Fail(board, step.Source.Id, prefix + (outcome == StepOutcome.HitWall
+                            ? "Bonk! The highlighted block drove the bot into a wall."
+                            : "Whoa, the highlighted block tried to drive off the edge of the board."));
+                        return;
+                    }
+
+                    await Task.Delay(StepDelayMs, token);
+                }
+
+                _activeId = null;
+
+                if (runner.RanOutOfSteps)
+                {
+                    Fail(board, null, prefix + "The bot went around in circles and never got there. Check that your loop can actually reach the flag.");
                     return;
                 }
 
-                await Task.Delay(StepDelayMs, token);
+                if (!session.OnFlag)
+                {
+                    Fail(board, null, prefix + "The program finished, but the bot isn't on the flag. Add more blocks or check your turns.");
+                    return;
+                }
+
+                _boardStates[board] = BoardState.Passed;
             }
 
-            _activeId = null;
-
-            if (_session.OnFlag)
-            {
-                await CompleteLevelAsync();
-            }
-            else
-            {
-                _status = new(StatusKind.Fail, steps.Count >= ProgramRunner.MaxSteps
-                    ? "That program is too long to finish. Try smaller Repeat counts."
-                    : "The program finished, but the bot isn't on the flag. Add more blocks or check your turns.");
-            }
+            await CompleteLevelAsync();
         }
         catch (OperationCanceledException)
         {
@@ -307,30 +366,41 @@
         }
     }
 
+    private void Fail(int board, Guid? blockId, string message)
+    {
+        _boardStates[board] = BoardState.Failed;
+        _activeId = null;
+        _failedId = blockId;
+        if (blockId is not null) _crashedBoard = board;
+        _status = new(StatusKind.Fail, message);
+    }
+
     private async Task CompleteLevelAsync()
     {
         var used = BlocksUsed;
         _earnedStars = _level.StarsFor(used);
         await Progress.RecordAsync(_level.Number, _earnedStars);
 
+        var where = _sessions.Count > 1 ? $"on all {_sessions.Count} boards " : "";
         var message = used <= _level.Par
-            ? $"Flag reached with {used} {(used == 1 ? "block" : "blocks")}. That's par. Nicely done."
-            : $"Flag reached with {used} blocks. Par is {_level.Par}. Can you do it with fewer?";
+            ? $"Flag reached {where}with {used} {(used == 1 ? "block" : "blocks")}. That's par. Nicely done."
+            : $"Flag reached {where}with {used} blocks. Par is {_level.Par}. Can you do it with fewer?";
         _status = new(StatusKind.Success, message);
     }
 
     private void Stop() => _cts?.Cancel();
 
-    private void ResetBot()
+    private void ResetBoards()
     {
-        _session.Reset();
+        foreach (var s in _sessions) s.Reset();
+        _boardStates = new BoardState[_sessions.Count];
         ClearRunState();
-        _status = new(StatusKind.Idle, _program.Count == 0 ? "Build a program, then press Run." : "Ready. Press Run to try it.");
+        _status = new(StatusKind.Idle, _program.Count == 0 ? ReadyEmpty : ReadyToRun);
     }
 
     private void ClearRunState()
     {
-        _crashed = false;
+        _crashedBoard = null;
         _activeId = null;
         _failedId = null;
         _earnedStars = 0;
@@ -342,43 +412,78 @@
         _cts?.Dispose();
     }
 
-    // ---------- Helpers ----------
+    // ---------- Program tree helpers ----------
 
-    private static bool Contains(List<Instruction> list, Instruction target) =>
-        list.Any(i => i == target || Contains(i.Body, target));
+    /// <summary>The block that owns a child list, and the list that block sits in.</summary>
+    private record Owner(Instruction Block, List<Instruction> Parent, bool IsElse);
 
-    private static bool RemoveFrom(List<Instruction> list, Instruction target) =>
-        list.Remove(target) || list.Any(i => RemoveFrom(i.Body, target));
-
-    /// <summary>How many loops deep a block sits (top-level loop = 1).</summary>
-    private static int DepthOf(Instruction target, List<Instruction> list, int depth)
+    private static Owner? FindOwner(List<Instruction> target, List<Instruction> list)
     {
-        foreach (var i in list)
+        foreach (var block in list)
         {
-            if (i == target) return depth;
-            var inner = DepthOf(target, i.Body, depth + 1);
-            if (inner > 0) return inner;
-        }
-        return 0;
-    }
+            if (block.IsContainer && block.Body == target) return new Owner(block, list, false);
+            if (block.Kind == BlockKind.If && block.ElseBody == target) return new Owner(block, list, true);
 
-    /// <summary>The loop that directly contains <paramref name="target"/>, or null if it's top level.</summary>
-    private static Instruction? ParentLoopOf(Instruction target, List<Instruction> list, Instruction? parent)
-    {
-        foreach (var i in list)
-        {
-            if (i == target) return parent;
-            var found = ParentLoopOf(target, i.Body, i);
-            if (found is not null) return found;
+            foreach (var child in block.ChildLists)
+            {
+                var found = FindOwner(target, child);
+                if (found is not null) return found;
+            }
         }
         return null;
     }
 
+    /// <summary>How many container blocks enclose a list (the main program is 0).</summary>
+    private int Depth(List<Instruction>? list)
+    {
+        int depth = 0;
+        while (list is not null && list != _program)
+        {
+            var owner = FindOwner(list, _program);
+            if (owner is null) break;
+            depth++;
+            list = owner.Parent;
+        }
+        return depth;
+    }
+
+    private static bool ContainsList(List<Instruction> haystack, List<Instruction> needle) =>
+        haystack.Any(b => b.ChildLists.Any(l => l == needle || ContainsList(l, needle)));
+
+    private static bool RemoveFrom(List<Instruction> list, Instruction target) =>
+        list.Remove(target) || list.Any(b => b.ChildLists.Any(l => RemoveFrom(l, target)));
+
+    // ---------- Display helpers ----------
+
+    private static string TargetName(Owner? owner) => owner switch
+    {
+        null => "a block",
+        { Block.Kind: BlockKind.If, IsElse: true } => "the If's Otherwise part",
+        { Block.Kind: BlockKind.If } => "the If's yes part",
+        _ => $"the {owner.Block.Label}"
+    };
+
+    private string LineClass(CodeLine line)
+    {
+        if (line.SourceId is null) return "";
+        if (line.SourceId == _activeId) return "is-active";
+        if (line.SourceId == _failedId) return "is-failed";
+        return "";
+    }
+
     private static string PaletteClass(BlockKind kind) => kind switch
     {
-        BlockKind.MoveForward => "move",
-        BlockKind.Repeat      => "loop",
-        _                     => "turn"
+        BlockKind.MoveForward                         => "move",
+        BlockKind.Repeat or BlockKind.RepeatUntilFlag => "loop",
+        BlockKind.If                                  => "if",
+        _                                             => "turn"
+    };
+
+    private static string BoardMark(BoardState state) => state switch
+    {
+        BoardState.Passed => "✓",
+        BoardState.Failed => "✕",
+        _                 => ""
     };
 
     private static string StarText(int stars, bool showEmpty = false) =>

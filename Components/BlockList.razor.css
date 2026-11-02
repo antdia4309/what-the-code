@@ -10,6 +10,9 @@
 .block {
     --block: var(--move);
     --block-shadow: var(--move-shadow);
+    --well: transparent;
+    --well-target: transparent;
+    --well-ink: inherit;
     border-radius: 10px;
     background: var(--block);
     box-shadow: 0 3px 0 var(--block-shadow);
@@ -20,7 +23,8 @@
 }
 
 .block-turn { --block: var(--turn); --block-shadow: var(--turn-shadow); }
-.block-loop { --block: var(--loop); --block-shadow: var(--loop-shadow); }
+.block-loop { --block: var(--loop); --block-shadow: var(--loop-shadow); --well: var(--loop-well); --well-target: var(--loop-well-target); --well-ink: var(--loop-ink); }
+.block-if   { --block: var(--decide); --block-shadow: var(--decide-shadow); --well: var(--decide-well); --well-target: var(--decide-well-target); --well-ink: var(--decide-ink); }
 
 .block.is-active { outline-color: var(--highlight); }
 .block.is-failed { outline-color: var(--danger); animation: wobble 360ms ease; }
@@ -36,6 +40,13 @@
 }
 
 .block-label { flex: 1; }
+
+.if-label {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
 
 .counter {
     display: inline-flex;
@@ -54,42 +65,62 @@
 
 .times { margin-left: 2px; }
 
-.count-btn, .remove-btn {
+.chip-btn, .condition-btn {
     border: 0;
     border-radius: 6px;
     background: rgba(255, 255, 255, .18);
     color: inherit;
     font: inherit;
-    width: 28px;
-    height: 28px;
     cursor: pointer;
     line-height: 1;
 }
 
-.count-btn:hover:not(:disabled), .remove-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .32); }
-.count-btn:disabled, .remove-btn:disabled { opacity: .45; cursor: default; }
+.chip-btn { width: 28px; height: 28px; }
 .remove-btn { font-size: .8rem; }
 
-.loop-body {
+.condition-btn {
+    padding: 5px 9px;
+    background: rgba(255, 255, 255, .26);
+}
+
+.chip-btn:hover:not(:disabled), .condition-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .38); }
+.chip-btn:disabled, .condition-btn:disabled { opacity: .55; cursor: default; }
+
+.well {
     margin: 0 8px 8px 18px;
     padding: 8px;
     border-radius: 8px;
-    background: var(--loop-well);
+    background: var(--well);
     border: 2px dashed transparent;
     cursor: pointer;
     min-height: 44px;
 }
 
-.loop-body.is-target {
+.well.is-target {
     border-color: var(--highlight);
-    background: var(--loop-well-target);
+    background: var(--well-target);
 }
 
-.loop-empty {
+.well-empty {
     margin: 0;
     padding: 4px 2px;
     font-size: .88rem;
-    color: var(--loop-ink);
+    color: var(--well-ink);
+}
+
+.else-label {
+    margin: 0 8px 4px 18px;
+    font-family: var(--font-display);
+    font-weight: 500;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
 }
 
 @keyframes wobble {

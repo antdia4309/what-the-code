@@ -1,9 +1,13 @@
 namespace WhatTheCode.Models
 {
-    public enum BlockKind { MoveForward, TurnLeft, TurnRight, Repeat }
+    public enum BlockKind { MoveForward, TurnLeft, TurnRight, Repeat, RepeatUntilFlag, If }
+
+    /// <summary>What an If block checks, relative to the way the bot is facing.</summary>
+    public enum Condition { PathAhead, PathLeft, PathRight }
 
     /// <summary>
-    /// One block in the player's program. Repeat blocks hold a body of child blocks.
+    /// One block in the player's program. Loops hold child blocks in <see cref="Body"/>;
+    /// If blocks also use <see cref="ElseBody"/> for the "otherwise" branch.
     /// </summary>
     public class Instruction
     {
@@ -13,26 +17,58 @@ namespace WhatTheCode.Models
         public Guid Id { get; } = Guid.NewGuid();
         public BlockKind Kind { get; }
         public int Count { get; private set; } = 3;
+        public Condition Condition { get; private set; } = Condition.PathAhead;
         public List<Instruction> Body { get; } = new();
-
-        public bool IsLoop => Kind == BlockKind.Repeat;
+        public List<Instruction> ElseBody { get; } = new();
 
         public Instruction(BlockKind kind) => Kind = kind;
+
+        public bool IsContainer => Kind is BlockKind.Repeat or BlockKind.RepeatUntilFlag or BlockKind.If;
+        public bool IsLoop => Kind is BlockKind.Repeat or BlockKind.RepeatUntilFlag;
+
+        /// <summary>The child lists this block owns (empty for simple blocks).</summary>
+        public IEnumerable<List<Instruction>> ChildLists
+        {
+            get
+            {
+                if (IsContainer) yield return Body;
+                if (Kind == BlockKind.If) yield return ElseBody;
+            }
+        }
 
         public void ChangeCount(int delta) =>
             Count = Math.Clamp(Count + delta, MinRepeat, MaxRepeat);
 
-        public string Label => Kind switch
+        public void CycleCondition() =>
+            Condition = Condition switch
+            {
+                Condition.PathAhead => Condition.PathLeft,
+                Condition.PathLeft  => Condition.PathRight,
+                _                   => Condition.PathAhead
+            };
+
+        public string Label => LabelFor(Kind);
+
+        public static string LabelFor(BlockKind kind) => kind switch
         {
-            BlockKind.MoveForward => "Move forward",
-            BlockKind.TurnLeft    => "Turn left",
-            BlockKind.TurnRight   => "Turn right",
-            BlockKind.Repeat      => "Repeat",
-            _                     => Kind.ToString()
+            BlockKind.MoveForward     => "Move forward",
+            BlockKind.TurnLeft        => "Turn left",
+            BlockKind.TurnRight       => "Turn right",
+            BlockKind.Repeat          => "Repeat",
+            BlockKind.RepeatUntilFlag => "Repeat until flag",
+            BlockKind.If              => "If",
+            _                         => kind.ToString()
         };
 
-        /// <summary>Total blocks in a program, counting loops and everything inside them.</summary>
+        public string ConditionLabel => Condition switch
+        {
+            Condition.PathAhead => "path ahead",
+            Condition.PathLeft  => "path to the left",
+            _                   => "path to the right"
+        };
+
+        /// <summary>Total blocks in a program, counting containers and everything inside them.</summary>
         public static int CountBlocks(IEnumerable<Instruction> program) =>
-            program.Sum(i => 1 + CountBlocks(i.Body));
+            program.Sum(i => 1 + i.ChildLists.Sum(CountBlocks));
     }
 }

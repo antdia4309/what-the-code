@@ -28,6 +28,11 @@
     --loop-well: #EDE5FF;
     --loop-well-target: #F8F4FF;
     --loop-ink: #4C2CA0;
+    --decide: #D1437F;
+    --decide-shadow: #9A2B5B;
+    --decide-well: #FCE6EF;
+    --decide-well-target: #FFF5F9;
+    --decide-ink: #8A1F4D;
 
     /* Feedback */
     --highlight: #FFD45C;
@@ -73,4 +78,55 @@ h1:focus { outline: none; }
 
     .blazor-error-boundary::after {
         content: "Something broke. Reload the page to keep playing.";
+    }
+
+/* ---------- Loading screen (shown until WebAssembly starts) ---------- */
+
+.boot {
+    min-height: 100vh;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: .5rem;
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    color: var(--ink-soft);
+}
+
+.boot p { margin: 0; }
+
+.boot-bot {
+    font-size: 3rem;
+    animation: hop 900ms ease-in-out infinite;
+}
+
+@keyframes hop {
+    0%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .boot-bot { animation: none; }
+}
+
+/* ---------- Error banner ---------- */
+
+#blazor-error-ui {
+    background: var(--flag-tile-soft);
+    color: var(--ink);
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
     }

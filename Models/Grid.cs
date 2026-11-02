@@ -25,6 +25,9 @@ namespace WhatTheCode.Models
 
         public bool IsWall(int x, int y) => _walls.Contains(new Cell(x, y));
 
+        /// <summary>True if the bot could drive into this cell.</summary>
+        public bool IsOpen(Cell c) => IsInBounds(c.X, c.Y) && !IsWall(c.X, c.Y);
+
         public void MarkVisited(int x, int y)
         {
             if (IsInBounds(x, y))

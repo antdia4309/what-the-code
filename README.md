@@ -1,5 +1,7 @@
 # 🎮 What the CODE?
 
+**▶ Play it: [antdia4309.github.io/what-the-code](https://antdia4309.github.io/what-the-code/)**
+
 A dual-layer, age-adaptive coding education game built with **C# + Blazor**. Designed to teach programming logic to anyone — from a 6-year-old dragging blocks to a 40-year-old reading real syntax.
 
 ---
@@ -22,9 +24,29 @@ Most coding education tools pick a lane — either too simple for adults or too 
 |---|---|---|
 | 1 | Core feedback loop — code → visual output | ✅ Complete |
 | 2 | Program builder + levels — build a program, run it, reach the flag | ✅ Complete |
-| 3 | User identity — login, synced progress across devices | 🔲 Up next |
-| 4 | Age-specific UX — Junior vs Pro layout toggle, typed C# mode | 🔲 Planned |
-| 5 | Gamification — badges, streaks, sandbox mode, polish | 🔲 Planned |
+| 3 | Decisions + deployment — If/Otherwise, Repeat until, multi-board levels, WebAssembly on GitHub Pages | ✅ Complete |
+| 4 | Debugging tools — step through, speed control, predicted path | 🔲 Up next |
+| 5 | Pro mode — type real C# instead of blocks | 🔲 Planned |
+| 6 | Gamification — badges, daily puzzle, level editor | 🔲 Planned |
+
+---
+
+## 🎯 What's playable now
+
+**12 levels in two parts.** Each one introduces at most one new idea.
+
+| Part | Levels | Ideas |
+|---|---|---|
+| Sequences & loops | 1–6 | Step order, turning, planning around walls, Repeat, patterns, nested loops |
+| Decisions | 7–12 | If/Otherwise, Repeat until flag, nested ifs, minimal programs, wall-following mazes |
+
+- **Build, then run.** Stack blocks into a program, press Run, and watch the bot follow it step by step.
+- **Blocks:** Move forward, Turn left, Turn right, Repeat, Repeat until flag, and If (path ahead / left / right) with an Otherwise branch. Blocks nest up to three deep.
+- **One program, many boards.** Later levels have several boards, so counting steps stops working and the program has to make real decisions.
+- **Live code bridge.** The program is shown as real C# (`for`, `while`, `if`/`else`), and the running line lights up in sync with its block.
+- **Helpful failure.** Crashes highlight the exact block and line. Programs that loop forever are caught and explained instead of freezing the page.
+- **Stars and par.** Solve a level in as few blocks as possible for three stars.
+- **Saved progress.** Best stars are kept in the browser, and levels unlock in order.
 
 ---
 
@@ -33,51 +55,49 @@ Most coding education tools pick a lane — either too simple for adults or too 
 ```
 what-the-code/
 ├── Components/
-│   ├── Pages/
-│   │   └── Play.razor          # Level select, board, program builder, code bridge
-│   ├── Layout/
-│   │   └── MainLayout.razor    # App shell
+│   ├── Pages/Play.razor        # Level select, board tabs, program builder, code bridge
 │   ├── GameGrid.razor          # Board: walls, flag, trail, animated bot
-│   ├── BlockList.razor         # Recursive program editor (handles nested loops)
-│   ├── App.razor               # Entry point
-│   └── _Imports.razor          # Global usings
+│   ├── BlockList.razor         # Recursive program editor (loops, If/Otherwise)
+│   ├── App.razor               # Router
+│   └── Layout/MainLayout.razor
 ├── Models/
+│   ├── Board.cs                # One playfield; built from a text map
 │   ├── Character.cs            # Position, direction, movement
-│   ├── Grid.cs                 # Grid dimensions, walls, visited trail
-│   ├── Instruction.cs          # A block in the player's program (Repeat holds children)
-│   └── Level.cs                # Level layout, par, available blocks
+│   ├── Grid.cs                 # Size, walls, visited trail
+│   ├── Instruction.cs          # A block in the player's program
+│   └── Level.cs                # Boards, par, available blocks
 ├── Services/
-│   ├── LevelCatalog.cs         # Hand-built levels
-│   ├── GameSession.cs          # Applies one action to the board
-│   ├── ProgramRunner.cs        # Unrolls loops into the exact action sequence
+│   ├── LevelCatalog.cs         # All levels, written as text maps
+│   ├── GameSession.cs          # Applies one action; answers If checks
+│   ├── ProgramRunner.cs        # Interprets the program one action at a time
 │   ├── CodeGenerator.cs        # Blocks → real C# (the "code bridge")
-│   └── ProgressStore.cs        # Best stars per level (browser localStorage for now)
-└── WhatTheCode.csproj
+│   └── ProgressStore.cs        # Best stars per level (browser localStorage)
+├── tests/WhatTheCode.Tests/    # xUnit tests
+├── wwwroot/                    # index.html, styles, static assets
+└── .github/workflows/deploy.yml
 ```
 
-The game logic in `Models/` and `Services/` has no UI dependencies, so it can move to Blazor WebAssembly or get unit tests without changes.
+The game logic in `Models/` and `Services/` has no UI dependencies, which is what makes it easy to test.
+
+### Adding a level
+
+Levels are text maps in `Services/LevelCatalog.cs`:
+
+```
+.  open floor     #  wall     F  flag     > < ^ v  bot start and facing
+```
+
+Then add a reference solution in `tests/WhatTheCode.Tests/LevelTests.cs`. The tests check that it reaches the flag on every board at exactly par, using only the blocks the level offers.
 
 ---
 
 ## ⚙️ Tech Stack
 
 - **Language:** C# (.NET 10)
-- **Framework:** Blazor Server
-- **Architecture:** Object-Oriented Programming (OOP)
+- **Framework:** Blazor WebAssembly (runs entirely in the browser, no server)
+- **Tests:** xUnit
+- **Hosting:** GitHub Pages, deployed by GitHub Actions on every push to `main`
 - **Naming:** PascalCase for types and public members, `_camelCase` for private fields
-- **Hosting:** GitHub Codespaces (dev). Blazor Server needs a running server (e.g. Azure App Service); switching to Blazor WebAssembly would allow free static hosting.
-
----
-
-## 🎯 What's playable now
-
-- **6 levels** that each introduce one idea: sequence → turning → planning around walls → loops → patterns → nested loops
-- **Build, then run:** stack blocks into a program, press Run, and watch the bot follow it step by step
-- **Blocks:** Move forward, Turn left, Turn right, Repeat (with nesting up to two levels)
-- **Live code bridge:** the program is shown as real C#, and the running line lights up in sync with the block
-- **Helpful failure:** hitting a wall or the edge stops the run and highlights the exact block and line responsible
-- **Stars and par:** solve a level in as few blocks as possible for three stars
-- **Saved progress:** best stars are kept in the browser, and levels unlock in order
 
 ---
 
@@ -85,9 +105,8 @@ The game logic in `Models/` and `Services/` has no UI dependencies, so it can mo
 
 ### Prerequisites
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- GitHub Codespaces or local dev environment
 
-### Run Locally
+### Run locally
 
 ```bash
 git clone https://github.com/antdia4309/what-the-code.git
@@ -95,14 +114,17 @@ cd what-the-code
 dotnet run
 ```
 
-Navigate to `http://localhost:5290` in your browser.
+Then open `http://localhost:5290`. In Codespaces, use the link in the **Ports** tab.
 
-### Run in Codespaces
+### Run the tests
 
-1. Open the repo on GitHub
-2. Click **Code → Codespaces → Create codespace**
-3. In the terminal: `dotnet run`
-4. Click the forwarded port link when prompted
+```bash
+dotnet test tests/WhatTheCode.Tests
+```
+
+### Deployment
+
+Every push to `main` runs the tests. If they pass, the site is published to GitHub Pages. A failing test blocks the deploy, so a broken level never goes live.
 
 ---
 

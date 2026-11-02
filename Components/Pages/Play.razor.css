@@ -43,9 +43,12 @@
     margin: 0;
     padding: 0;
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
-    position: relative;
 }
+
+/* A little extra space where the "decisions" levels begin. */
+.level-path li.part-start { margin-left: 14px; }
 
 .level-stop {
     width: 48px;
@@ -113,6 +116,37 @@
     border-left: 4px solid var(--flag-tile);
     line-height: 1.45;
 }
+
+.board-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.board-tabs-note {
+    width: 100%;
+    font-size: .92rem;
+    color: var(--ink-soft);
+    margin-bottom: 2px;
+}
+
+.board-tab {
+    border: 2px solid var(--mat-line);
+    border-radius: 10px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: .95rem;
+    padding: .35rem .8rem;
+    cursor: pointer;
+}
+
+.board-tab[aria-selected="true"] { border-color: var(--ink); }
+.board-tab.board-passed span { color: var(--trail-strong); }
+.board-tab.board-failed span { color: var(--danger); }
+.board-tab:disabled { cursor: default; }
 
 .status {
     width: 100%;
@@ -186,6 +220,7 @@
 
 .palette-turn { --block: var(--turn); --block-shadow: var(--turn-shadow); }
 .palette-loop { --block: var(--loop); --block-shadow: var(--loop-shadow); }
+.palette-if   { --block: var(--decide); --block-shadow: var(--decide-shadow); }
 
 .palette-block:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 0 0 var(--block-shadow); }
 .palette-block:disabled { opacity: .45; cursor: default; }
@@ -295,5 +330,36 @@
     .stage { grid-template-columns: minmax(0, 1fr); }
     .board-side { align-items: center; }
     .level-title, .new-idea, .tip { align-self: stretch; }
-    .status { max-width: none; }
+    .board-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.board-tabs-note {
+    width: 100%;
+    font-size: .92rem;
+    color: var(--ink-soft);
+    margin-bottom: 2px;
+}
+
+.board-tab {
+    border: 2px solid var(--mat-line);
+    border-radius: 10px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: .95rem;
+    padding: .35rem .8rem;
+    cursor: pointer;
+}
+
+.board-tab[aria-selected="true"] { border-color: var(--ink); }
+.board-tab.board-passed span { color: var(--trail-strong); }
+.board-tab.board-failed span { color: var(--danger); }
+.board-tab:disabled { cursor: default; }
+
+.status { max-width: none; }
 }

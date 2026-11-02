@@ -1,0 +1,56 @@
+name: Test and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Run tests
+        run: dotnet test tests/WhatTheCode.Tests
+
+      - name: Publish
+        run: dotnet publish WhatTheCode.csproj -c Release -o release
+
+      - name: Prepare for GitHub Pages
+        run: |
+          # The site lives at /what-the-code/, not the domain root.
+          sed -i 's|<base href="/" />|<base href="/what-the-code/" />|' release/wwwroot/index.html
+          # Send unknown URLs back to the app instead of GitHub's 404 page.
+          cp release/wwwroot/index.html release/wwwroot/404.html
+          # Stop Jekyll from hiding the _framework folder.
+          touch release/wwwroot/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: release/wwwroot
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
