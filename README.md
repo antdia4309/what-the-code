@@ -45,6 +45,7 @@ Most coding education tools pick a lane — either too simple for adults or too 
 - **One program, many boards.** Later levels have several boards, so counting steps stops working and the program has to make real decisions.
 - **Live code bridge.** The program is shown as real C# (`for`, `while`, `if`/`else`), and the running line lights up in sync with its block.
 - **Helpful failure.** Crashes highlight the exact block and line. Programs that loop forever are caught and explained instead of freezing the page.
+- **Hints when you're stuck.** Every level has two hints, gentle first. After that you can reveal the answer: its route is drawn on the board and the blocks can be loaded into your program. Solving with the answer shown earns 1 star, and replaying on your own earns the full 3.
 - **Stars and par.** Solve a level in as few blocks as possible for three stars.
 - **Saved progress.** Best stars are kept in the browser, and levels unlock in order.
 
@@ -67,7 +68,9 @@ what-the-code/
 │   ├── Instruction.cs          # A block in the player's program
 │   └── Level.cs                # Boards, par, available blocks
 ├── Services/
-│   ├── LevelCatalog.cs         # All levels, written as text maps
+│   ├── LevelCatalog.cs         # All levels: text maps, hints, and solutions
+│   ├── ProgramBuilder.cs       # Shorthand for writing solutions in code
+│   ├── SolutionPath.cs         # Traces the answer's route for the board
 │   ├── GameSession.cs          # Applies one action; answers If checks
 │   ├── ProgramRunner.cs        # Interprets the program one action at a time
 │   ├── CodeGenerator.cs        # Blocks → real C# (the "code bridge")
@@ -87,7 +90,7 @@ Levels are text maps in `Services/LevelCatalog.cs`:
 .  open floor     #  wall     F  flag     > < ^ v  bot start and facing
 ```
 
-Then add a reference solution in `tests/WhatTheCode.Tests/LevelTests.cs`. The tests check that it reaches the flag on every board at exactly par, using only the blocks the level offers.
+Each level also needs two `Hints` and a `Solution` (built with the helpers in `Services/ProgramBuilder.cs`). The solution is what players see when they ask for the answer, and the tests check that it reaches the flag on every board at exactly par, using only the blocks the level offers. Run `dotnet test tests/WhatTheCode.Tests` before pushing.
 
 ---
 

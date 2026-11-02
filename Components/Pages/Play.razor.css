@@ -180,6 +180,50 @@
     line-height: 1.5;
 }
 
+.help {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+}
+
+.hint {
+    margin: 0;
+    padding: .65rem .9rem;
+    border-radius: 10px;
+    background: var(--decide-well);
+    border-left: 4px solid var(--decide);
+    line-height: 1.45;
+}
+
+.help-box {
+    padding: .8rem .9rem;
+    border-radius: 10px;
+    border: 2px dashed var(--decide);
+    background: var(--paper-raised);
+    line-height: 1.45;
+}
+
+.help-box p { margin: 0 0 .6rem; }
+
+.help-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.btn-small {
+    padding: .45rem .9rem;
+    font-size: .95rem;
+}
+
+.btn-reveal {
+    background: var(--decide);
+    color: #fff;
+    box-shadow: 0 3px 0 var(--decide-shadow);
+}
+
 /* ---------- Workshop ---------- */
 
 .workshop {
@@ -329,7 +373,8 @@
 @media (max-width: 860px) {
     .stage { grid-template-columns: minmax(0, 1fr); }
     .board-side { align-items: center; }
-    .level-title, .new-idea, .tip { align-self: stretch; }
+    .level-title, .new-idea, .tip, .help { align-self: stretch; }
+    .help { max-width: none; }
     .board-tabs {
     display: flex;
     flex-wrap: wrap;

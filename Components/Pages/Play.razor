@@ -64,7 +64,8 @@
                 </div>
             }
 
-            <GameGrid Session="ShownSession" Crashed="_crashedBoard == _shown" Celebrating="_status.Kind == StatusKind.Success" />
+            <GameGrid Session="ShownSession" Crashed="_crashedBoard == _shown" Celebrating="_status.Kind == StatusKind.Success"
+                      Ghost="@(_answerRevealed ? _answerPaths[_shown] : null)" />
 
             <div class="status status-@_status.Kind.ToString().ToLowerInvariant()" role="status" aria-live="polite">
                 @if (_status.Kind == StatusKind.Success)
@@ -83,6 +84,48 @@
             </div>
 
             <p class="tip">@_level.Tip</p>
+
+            <div class="help" aria-live="polite">
+                @for (int i = 0; i < _hintsShown; i++)
+                {
+                    <p class="hint"><strong>Hint @(i + 1).</strong> @_level.Hints[i]</p>
+                }
+
+                @if (_answerRevealed)
+                {
+                    <div class="help-box answer">
+                        <p>
+                            The dotted rings on the board show the route the answer takes@(_sessions.Count > 1 ? ". Switch boards to see each one." : ".")
+                        </p>
+                        <button type="button" class="btn btn-quiet" disabled="@_running" @onclick="LoadAnswer">Put the answer in my program</button>
+                    </div>
+                }
+                else if (_confirmingAnswer)
+                {
+                    <div class="help-box confirm">
+                        <p>If you see the answer, solving this level earns 1 star this time. You can always replay it on your own for 3.</p>
+                        <div class="help-actions">
+                            <button type="button" class="btn btn-reveal" @onclick="RevealAnswer">Show the answer</button>
+                            <button type="button" class="btn btn-quiet" @onclick="() => _confirmingAnswer = false">Keep trying</button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="help-actions">
+                        @if (_hintsShown < _level.Hints.Count)
+                        {
+                            <button type="button" class="btn btn-quiet btn-small" @onclick="() => _hintsShown++">
+                                @(_hintsShown == 0 ? "Stuck? Show a hint" : "Show another hint")
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-quiet btn-small" @onclick="() => _confirmingAnswer = true">Show the answer</button>
+                        }
+                    </div>
+                }
+            </div>
         </section>
 
         <section class="workshop" aria-label="Build your program">
@@ -186,6 +229,12 @@
     private Guid? _activeId;
     private Guid? _failedId;
     private int _earnedStars;
+
+    // Help: hints are free; seeing the answer caps this solve at one star.
+    private int _hintsShown;
+    private bool _confirmingAnswer;
+    private bool _answerRevealed;
+    private List<HashSet<Cell>> _answerPaths = new();
     private CancellationTokenSource? _cts;
     private Status _status = new(StatusKind.Idle, ReadyEmpty);
 
@@ -221,8 +270,29 @@
         _shown = 0;
         _program = new();
         _target = null;
+        _hintsShown = 0;
+        _confirmingAnswer = false;
+        _answerRevealed = false;
+        _answerPaths = new();
         ClearRunState();
         _status = new(StatusKind.Idle, ReadyEmpty);
+    }
+
+    // ---------- Help ----------
+
+    private void RevealAnswer()
+    {
+        _answerPaths = _level.Boards.Select(b => SolutionPath.Trace(b, _level.Solution())).ToList();
+        _answerRevealed = true;
+        _confirmingAnswer = false;
+    }
+
+    private void LoadAnswer()
+    {
+        if (_running) return;
+        _program = _level.Solution();
+        _target = null;
+        OnProgramEdited();
     }
 
     // ---------- Editing ----------
@@ -378,11 +448,13 @@
     private async Task CompleteLevelAsync()
     {
         var used = BlocksUsed;
-        _earnedStars = _level.StarsFor(used);
+        _earnedStars = _answerRevealed ? 1 : _level.StarsFor(used);
         await Progress.RecordAsync(_level.Number, _earnedStars);
 
         var where = _sessions.Count > 1 ? $"on all {_sessions.Count} boards " : "";
-        var message = used <= _level.Par
+        var message = _answerRevealed
+            ? $"Flag reached {where}with the answer's help, so this one's worth 1 star. Replay it on your own for 3."
+            : used <= _level.Par
             ? $"Flag reached {where}with {used} {(used == 1 ? "block" : "blocks")}. That's par. Nicely done."
             : $"Flag reached {where}with {used} blocks. Par is {_level.Par}. Can you do it with fewer?";
         _status = new(StatusKind.Success, message);

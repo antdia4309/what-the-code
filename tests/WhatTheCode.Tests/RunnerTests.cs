@@ -1,6 +1,6 @@
 using WhatTheCode.Models;
 using WhatTheCode.Services;
-using static WhatTheCode.Tests.Blocks;
+using static WhatTheCode.Services.Build;
 
 namespace WhatTheCode.Tests;
 

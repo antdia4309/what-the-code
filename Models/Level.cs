@@ -22,6 +22,15 @@ namespace WhatTheCode.Models
 
         public required IReadOnlyList<BlockKind> Blocks { get; init; }
 
+        /// <summary>Two hints, gentle first. Neither should give the whole answer away.</summary>
+        public required IReadOnlyList<string> Hints { get; init; }
+
+        /// <summary>
+        /// Builds a fresh copy of a par solution. Shown to players who ask for the answer,
+        /// and checked by the tests against every board.
+        /// </summary>
+        public required Func<List<Instruction>> Solution { get; init; }
+
         public int StarsFor(int blocksUsed) =>
             blocksUsed <= Par ? 3 : blocksUsed <= Par + 2 ? 2 : 1;
     }

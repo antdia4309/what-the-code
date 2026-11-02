@@ -30,6 +30,15 @@
     background: var(--trail);
 }
 
+/* The answer's route: a dashed ring, so it reads as "go here" rather than "been here". */
+.cell.ghost::before {
+    content: "";
+    position: absolute;
+    inset: 26%;
+    border-radius: 50%;
+    border: 2px dashed var(--decide);
+}
+
 .cell.wall {
     background:
         linear-gradient(var(--wall-mortar) 0 0) 0 50% / 100% 2px no-repeat,
