@@ -4,7 +4,7 @@
     @foreach (var item in Items)
     {
         var block = item;
-        <li class="block block-@KindClass(block.Kind) @(block.Id == ActiveId ? "is-active" : "") @(block.Id == FailedId ? "is-failed" : "")">
+        <li data-block="@block.Id" class="block block-@KindClass(block.Kind) @(block.Id == ActiveId ? "is-active" : "") @(block.Id == FailedId ? "is-failed" : "")">
             <div class="block-row">
                 @switch (block.Kind)
                 {

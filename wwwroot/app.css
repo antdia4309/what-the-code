@@ -61,6 +61,12 @@ html, body {
     font-size: 16px;
 }
 
+button,
+[role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
 button:focus-visible,
 [role="button"]:focus-visible,
 a:focus-visible {

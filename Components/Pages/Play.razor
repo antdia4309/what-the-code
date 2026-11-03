@@ -3,6 +3,7 @@
 @using WhatTheCode.Models
 @using WhatTheCode.Services
 @inject ProgressStore Progress
+@inject IJSRuntime JS
 
 <PageTitle>What the CODE? · Level @_level.Number</PageTitle>
 
@@ -34,7 +35,7 @@
     </header>
 
     <main class="stage">
-        <section class="board-side" aria-labelledby="level-title">
+        <section class="intro" aria-labelledby="level-title">
             <h2 id="level-title" class="level-title">
                 <span class="level-tag">Level @_level.Number</span>
                 @_level.Title
@@ -44,7 +45,9 @@
             {
                 <p class="new-idea"><strong>New idea.</strong> @_level.NewIdea</p>
             }
+        </section>
 
+        <section class="board-panel" aria-label="Board">
             @if (_sessions.Count > 1)
             {
                 <div class="board-tabs" role="tablist" aria-label="Boards">
@@ -64,9 +67,18 @@
                 </div>
             }
 
-            <GameGrid Session="ShownSession" Crashed="_crashedBoard == _shown" Celebrating="_status.Kind == StatusKind.Success"
-                      Ghost="@(_answerRevealed ? _answerPaths[_shown] : null)" />
+            @* Tapping the board doesn't move the bot, so explain what does. *@
+            <div class="board-wrap" @onclick="NudgeAsync">
+                <GameGrid Session="ShownSession" Crashed="_crashedBoard == _shown" Celebrating="_status.Kind == StatusKind.Success"
+                          Ghost="@(_answerRevealed ? _answerPaths[_shown] : null)" />
+            </div>
 
+            @if (_nudge)
+            {
+                <p class="nudge" role="status">The bot only follows your program. Tap a block to add it, then press Run.</p>
+            }
+            else
+            {
             <div class="status status-@_status.Kind.ToString().ToLowerInvariant()" role="status" aria-live="polite">
                 @if (_status.Kind == StatusKind.Success)
                 {
@@ -82,7 +94,10 @@
                     <p class="all-done">That's every level so far. Try earning three stars on each one.</p>
                 }
             </div>
+            }
+        </section>
 
+        <section class="help-panel" aria-label="Tips and hints">
             <p class="tip">@_level.Tip</p>
 
             <div class="help" aria-live="polite">
@@ -129,18 +144,34 @@
         </section>
 
         <section class="workshop" aria-label="Build your program">
-            <div class="palette">
-                <h3>Blocks</h3>
-                <div class="palette-blocks">
-                    @foreach (var kind in _level.Blocks)
+            @* On phones the dock is pinned to the bottom of the screen, within thumb reach. *@
+            <div class="dock">
+                <div class="palette">
+                    <h3 class="palette-title">Blocks</h3>
+                    <div class="palette-blocks @(_nudge || ShowFirstTimeHint ? "is-nudged" : "")">
+                        @foreach (var kind in _level.Blocks)
+                        {
+                            var k = kind;
+                            <button type="button" class="palette-block palette-@PaletteClass(k)"
+                                    disabled="@(_running || !CanAdd(k))"
+                                    @onclick="() => AddBlock(k)">
+                                + @Instruction.LabelFor(k)
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <div class="run-controls">
+                    @if (_running)
                     {
-                        var k = kind;
-                        <button type="button" class="palette-block palette-@PaletteClass(k)"
-                                disabled="@(_running || !CanAdd(k))"
-                                @onclick="() => AddBlock(k)">
-                            + @Instruction.LabelFor(k)
-                        </button>
+                        <button type="button" class="btn btn-stop" @onclick="Stop">■ Stop</button>
                     }
+                    else
+                    {
+                        <button type="button" class="btn btn-run" disabled="@(_program.Count == 0)" @onclick="RunAsync">▶ Run</button>
+                    }
+                    <button type="button" class="btn btn-quiet" disabled="@_running" @onclick="ResetBoards">Reset<span class="wide-only"> bot</span></button>
+                    <button type="button" class="btn btn-quiet" disabled="@(_running || _program.Count == 0)" @onclick="ClearProgram">Clear</button>
                 </div>
             </div>
 
@@ -168,7 +199,7 @@
                      @onclick="() => SelectTarget(null)">
                     @if (_program.Count == 0)
                     {
-                        <p class="program-empty">Tap a block above to add it here.</p>
+                        <p class="program-empty">Tap a block to add it to your program.</p>
                     }
                     else
                     {
@@ -177,19 +208,6 @@
                                    OnRemove="RemoveBlock" OnSelectTarget="SelectTarget"
                                    OnCountChange="ChangeCount" OnCycleCondition="CycleCondition" />
                     }
-                </div>
-
-                <div class="run-controls">
-                    @if (_running)
-                    {
-                        <button type="button" class="btn btn-stop" @onclick="Stop">Stop</button>
-                    }
-                    else
-                    {
-                        <button type="button" class="btn btn-run" disabled="@(_program.Count == 0)" @onclick="RunAsync">▶ Run</button>
-                    }
-                    <button type="button" class="btn btn-quiet" disabled="@_running" @onclick="ResetBoards">Reset bot</button>
-                    <button type="button" class="btn btn-quiet" disabled="@(_running || _program.Count == 0)" @onclick="ClearProgram">Clear</button>
                 </div>
             </div>
 
@@ -235,6 +253,15 @@
     private bool _confirmingAnswer;
     private bool _answerRevealed;
     private List<HashSet<Cell>> _answerPaths = new();
+
+    // Phone helpers
+    private bool _nudge;
+    private CancellationTokenSource? _nudgeCts;
+    private bool _scrollLevelStrip = true;
+    private Guid? _revealBlockId;
+
+    /// <summary>On the very first level, gently point at the blocks until something is added.</summary>
+    private bool ShowFirstTimeHint => _level.Number == 1 && _program.Count == 0 && !_running && !Progress.IsSolved(1);
     private CancellationTokenSource? _cts;
     private Status _status = new(StatusKind.Idle, ReadyEmpty);
 
@@ -246,12 +273,54 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) return;
+        if (firstRender)
+        {
+            await Progress.LoadAsync();
+            var resumeAt = LevelCatalog.All.FirstOrDefault(l => !Progress.IsSolved(l.Number)) ?? LevelCatalog.All[^1];
+            LoadLevel(resumeAt);
+            StateHasChanged();
+            return;
+        }
 
-        await Progress.LoadAsync();
-        var resumeAt = LevelCatalog.All.FirstOrDefault(l => !Progress.IsSolved(l.Number)) ?? LevelCatalog.All[^1];
-        LoadLevel(resumeAt);
-        StateHasChanged();
+        try
+        {
+            if (_scrollLevelStrip)
+            {
+                _scrollLevelStrip = false;
+                await JS.InvokeVoidAsync("wtc.showCurrentLevel");
+            }
+
+            if (_revealBlockId is { } id)
+            {
+                _revealBlockId = null;
+                await JS.InvokeVoidAsync("wtc.revealBlock", id.ToString());
+            }
+        }
+        catch (JSException)
+        {
+            // Scrolling helpers are cosmetic; never let them break the game.
+        }
+    }
+
+    /// <summary>Someone tapped the board expecting it to move the bot. Point them at the blocks instead.</summary>
+    private async Task NudgeAsync()
+    {
+        if (_running) return;
+
+        _nudgeCts?.Cancel();
+        _nudgeCts = new CancellationTokenSource();
+        var token = _nudgeCts.Token;
+        _nudge = true;
+
+        try
+        {
+            await Task.Delay(4000, token);
+            _nudge = false;
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer tap restarted the timer.
+        }
     }
 
     // ---------- Levels ----------
@@ -274,6 +343,8 @@
         _confirmingAnswer = false;
         _answerRevealed = false;
         _answerPaths = new();
+        _nudge = false;
+        _scrollLevelStrip = true;
         ClearRunState();
         _status = new(StatusKind.Idle, ReadyEmpty);
     }
@@ -308,6 +379,8 @@
         (_target ?? _program).Add(block);
 
         if (block.IsContainer) _target = block.Body; // next blocks go inside the new block
+        _nudge = false;
+        _revealBlockId = block.Id;
         OnProgramEdited();
     }
 
@@ -482,6 +555,8 @@
     {
         _cts?.Cancel();
         _cts?.Dispose();
+        _nudgeCts?.Cancel();
+        _nudgeCts?.Dispose();
     }
 
     // ---------- Program tree helpers ----------

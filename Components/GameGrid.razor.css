@@ -122,6 +122,13 @@
     40% { transform: translateY(-10px); }
 }
 
+@media (max-width: 860px) {
+    .board {
+        --cell: min(56px, calc((100vw - 2.5rem) / var(--cols)), calc(30vh / var(--rows)), calc(30dvh / var(--rows)));
+        border-radius: 12px;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .bot, .bot-heading { transition: none; }
     .bot.crashed .bot-face, .bot.celebrating .bot-face { animation: none; }

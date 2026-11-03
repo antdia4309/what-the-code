@@ -25,9 +25,10 @@ Most coding education tools pick a lane — either too simple for adults or too 
 | 1 | Core feedback loop — code → visual output | ✅ Complete |
 | 2 | Program builder + levels — build a program, run it, reach the flag | ✅ Complete |
 | 3 | Decisions + deployment — If/Otherwise, Repeat until, multi-board levels, WebAssembly on GitHub Pages | ✅ Complete |
-| 4 | Debugging tools — step through, speed control, predicted path | 🔲 Up next |
-| 5 | Pro mode — type real C# instead of blocks | 🔲 Planned |
-| 6 | Gamification — badges, daily puzzle, level editor | 🔲 Planned |
+| 4 | Phone-friendly — pinned board, thumb dock for blocks and Run, tap-the-board guidance | ✅ Complete |
+| 5 | Debugging tools — step through, speed control, predicted path | 🔲 Up next |
+| 6 | Pro mode — type real C# instead of blocks | 🔲 Planned |
+| 7 | Gamification — badges, daily puzzle, level editor | 🔲 Planned |
 
 ---
 
@@ -48,6 +49,7 @@ Most coding education tools pick a lane — either too simple for adults or too 
 - **Hints when you're stuck.** Every level has two hints, gentle first. After that you can reveal the answer: its route is drawn on the board and the blocks can be loaded into your program. Solving with the answer shown earns 1 star, and replaying on your own earns the full 3.
 - **Stars and par.** Solve a level in as few blocks as possible for three stars.
 - **Saved progress.** Best stars are kept in the browser, and levels unlock in order.
+- **Made for phones too.** On small screens the board stays pinned at the top, blocks and Run sit in a dock at your thumb, and new blocks scroll into view as you add them. Tapping the board explains that the bot follows your program.
 
 ---
 
