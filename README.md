@@ -27,8 +27,8 @@ Most coding education tools pick a lane — either too simple for adults or too 
 | 3 | Decisions + deployment — If/Otherwise, Repeat until, multi-board levels, WebAssembly on GitHub Pages | ✅ Complete |
 | 4 | Phone-friendly — pinned board, thumb dock for blocks and Run, tap-the-board guidance | ✅ Complete |
 | 5 | Debugging tools — pause, step, speed, visible decisions, loop counters | ✅ Complete |
-| 6 | Pro mode — type real C# instead of blocks | 🔲 Up next |
-| 7 | Gamification — badges, daily puzzle, level editor | 🔲 Planned |
+| 6 | Pro mode — type real C# instead of blocks, with beginner-friendly errors | ✅ Complete |
+| 7 | Gamification — badges, daily puzzle, level editor | 🔲 Up next |
 
 ---
 
@@ -45,6 +45,7 @@ Most coding education tools pick a lane — either too simple for adults or too 
 - **Blocks:** Move forward, Turn left, Turn right, Repeat, Repeat until flag, and If (path ahead / left / right) with an Otherwise branch. Blocks nest up to three deep.
 - **One program, many boards.** Later levels have several boards, so counting steps stops working and the program has to make real decisions.
 - **Live code bridge.** The program is shown as real C# (`for`, `while`, `if`/`else`), and the running line lights up in sync with its block.
+- **Pro mode: type real C#.** Switch between Blocks and Code at any time; your program converts both ways. The game reads a small slice of C# (`bot.MoveForward();`, `for`, `while (!bot.AtFlag())`, `if`/`else`/`else if`, comments) and explains mistakes in plain English with the line number, e.g. *"C# is case-sensitive: write MoveForward."* Snippet buttons insert code at the cursor with the right indentation, which matters on phones.
 - **Debugging tools.** Pause a run or Step through it one block at a time, and switch between slow, normal and fast. Each If shows ✓ yes or ✗ no as it checks the board, the status line explains what happens next, and loops show which pass they're on.
 - **Helpful failure.** Crashes highlight the exact block and line. Programs that loop forever are caught and explained instead of freezing the page.
 - **Hints when you're stuck.** Every level has two hints, gentle first. After that you can reveal the answer: its route is drawn on the board and the blocks can be loaded into your program. Solving with the answer shown earns 1 star, and replaying on your own earns the full 3.
@@ -77,6 +78,7 @@ what-the-code/
 │   ├── GameSession.cs          # Applies one action; answers If checks
 │   ├── ProgramRunner.cs        # Interprets the program one action at a time
 │   ├── CodeGenerator.cs        # Blocks → real C# (the "code bridge")
+│   ├── CodeParser.cs           # Typed C# → blocks, with beginner-friendly errors
 │   └── ProgressStore.cs        # Best stars per level (browser localStorage)
 ├── tests/WhatTheCode.Tests/    # xUnit tests
 ├── wwwroot/                    # index.html, styles, static assets

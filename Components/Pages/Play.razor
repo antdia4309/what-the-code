@@ -76,7 +76,7 @@
 
             @if (_nudge)
             {
-                <p class="nudge" role="status">The bot only follows your program. Tap a block to add it, then press Run.</p>
+                <p class="nudge" role="status">The bot only follows your program. @(_mode == EditMode.Code ? "Write it below" : "Tap a block to add it"), then press Run.</p>
             }
             else
             {
@@ -152,16 +152,28 @@
             @* On phones the dock is pinned to the bottom of the screen, within thumb reach. *@
             <div class="dock">
                 <div class="palette">
-                    <h3 class="palette-title">Blocks</h3>
+                    <h3 class="palette-title">@(_mode == EditMode.Code ? "Snippets" : "Blocks")</h3>
                     <div class="palette-blocks @(_nudge || ShowFirstTimeHint ? "is-nudged" : "")">
                         @foreach (var kind in _level.Blocks)
                         {
                             var k = kind;
-                            <button type="button" class="palette-block palette-@PaletteClass(k)"
-                                    disabled="@(_running || !CanAdd(k))"
-                                    @onclick="() => AddBlock(k)">
-                                + @Instruction.LabelFor(k)
-                            </button>
+                            @if (_mode == EditMode.Code)
+                            {
+                                <button type="button" class="palette-block palette-code palette-@PaletteClass(k)"
+                                        disabled="@_running"
+                                        title="Insert at the cursor"
+                                        @onclick="() => InsertSnippetAsync(k)">
+                                    @SnippetLabel(k)
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="palette-block palette-@PaletteClass(k)"
+                                        disabled="@(_running || !CanAdd(k))"
+                                        @onclick="() => AddBlock(k)">
+                                    + @Instruction.LabelFor(k)
+                                </button>
+                            }
                         }
                     </div>
                 </div>
@@ -169,11 +181,11 @@
                 <div class="run-controls">
                     @if (!_running)
                     {
-                        <button type="button" class="btn btn-run" disabled="@(_program.Count == 0)" @onclick="() => RunAsync()">▶ Run</button>
-                        <button type="button" class="btn btn-quiet" disabled="@(_program.Count == 0)" @onclick="StepAsync"
+                        <button type="button" class="btn btn-run" disabled="@(!CanRun)" @onclick="() => RunAsync()">▶ Run</button>
+                        <button type="button" class="btn btn-quiet" disabled="@(!CanRun)" @onclick="StepAsync"
                                 title="Run one block at a time">Step</button>
-                        <button type="button" class="btn btn-quiet" @onclick="ResetBoards">Reset<span class="wide-only"> bot</span></button>
-                        <button type="button" class="btn btn-quiet" disabled="@(_program.Count == 0)" @onclick="ClearProgram">Clear</button>
+                        <button type="button" class="btn btn-quiet" @onclick="ResetBoards" title="Put the bot back at the start">Reset</button>
+                        <button type="button" class="btn btn-quiet" disabled="@(_program.Count == 0 && string.IsNullOrWhiteSpace(_codeText))" @onclick="ClearProgram">Clear</button>
                     }
                     else
                     {
@@ -189,8 +201,8 @@
                         <button type="button" class="btn btn-stop" @onclick="Stop">■ Stop</button>
                     }
                     <button type="button" class="btn btn-quiet btn-speed" @onclick="CycleSpeed"
-                            aria-label="Speed: @SpeedName. Tap to change." title="Change speed">
-                        <span aria-hidden="true">@SpeedIcon</span><span class="wide-only"> @SpeedName</span>
+                            aria-label="Speed: @SpeedName. Tap to change." title="Speed: @SpeedName (tap to change)">
+                        <span aria-hidden="true">@SpeedIcon</span>
                     </button>
                 </div>
             </div>
@@ -198,8 +210,54 @@
             <div class="program">
                 <div class="program-head">
                     <h3>Your program</h3>
-                    <span class="block-count">@BlocksUsed @(BlocksUsed == 1 ? "block" : "blocks") · par @_level.Par</span>
+                    <div class="mode-toggle" role="radiogroup" aria-label="How to write your program">
+                        <button type="button" role="radio" aria-checked="@(_mode == EditMode.Blocks ? "true" : "false")"
+                                class="@(_mode == EditMode.Blocks ? "is-on" : "")" disabled="@_running"
+                                @onclick="() => SetModeAsync(EditMode.Blocks)">Blocks</button>
+                        <button type="button" role="radio" aria-checked="@(_mode == EditMode.Code ? "true" : "false")"
+                                class="@(_mode == EditMode.Code ? "is-on" : "")" disabled="@_running"
+                                @onclick="() => SetModeAsync(EditMode.Code)">Code</button>
+                    </div>
                 </div>
+                <p class="block-count">@BlocksUsed @(BlocksUsed == 1 ? "block" : "blocks") · par @_level.Par</p>
+
+                @if (_mode == EditMode.Code)
+                {
+                    <div class="editor @(_codeError is not null ? "has-error" : "")">
+                        <div class="gutter" aria-hidden="true">
+                            @for (int n = 1; n <= EditorLineCount; n++)
+                            {
+                                <span class="@GutterClass(n)">@n</span>
+                            }
+                        </div>
+                        @if (_running)
+                        {
+                            <pre class="editor-view" aria-label="Your program in C#, running">@for (int n = 1; n <= CodeTextLines.Length; n++)
+{var lineNo = n;<span class="editor-line @LineState(lineNo)">@CodeTextLines[lineNo - 1]@if (LineNote(lineNo) is { } note){<span class="line-note @note.Css">@note.Text</span>}
+</span>}</pre>
+                        }
+                        else
+                        {
+                            <textarea id="code-editor" class="editor-input" rows="@EditorLineCount"
+                                      spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"
+                                      aria-label="Your program in C#" aria-describedby="code-help"
+                                      placeholder="@CodePlaceholder"
+                                      value="@_codeText" @oninput="OnCodeInput"></textarea>
+                        }
+                    </div>
+
+                    @if (_codeError is not null)
+                    {
+                        <p class="code-error" role="alert"><strong>Line @_codeError.Line:</strong> @_codeError.Message</p>
+                    }
+                    @if (_switchBlocked)
+                    {
+                        <p class="code-error-note">Fix that first, then switch to blocks. Your blocks have to match your code.</p>
+                    }
+                    <p id="code-help" class="code-help">Snippets drop in at your cursor. Tab indents, Enter keeps your indentation.</p>
+                }
+                else
+                {
 
                 @if (_target is not null && !_running)
                 {
@@ -230,14 +288,18 @@
                                    OnCountChange="ChangeCount" OnCycleCondition="CycleCondition" />
                     }
                 </div>
+                }
             </div>
 
+            @if (_mode == EditMode.Blocks)
+            {
             <div class="bridge">
                 <h3>Your program in C#</h3>
                 <pre class="code" aria-label="Generated C# code"><code>@foreach (var line in CodeGenerator.Generate(_program))
 {<span class="code-line @LineClass(line)">@line.Text
 </span>}</code></pre>
             </div>
+            }
         </section>
     </main>
 </div>
@@ -248,6 +310,10 @@
     private record Status(StatusKind Kind, string Message);
 
     private enum Speed { Slow, Normal, Fast }
+    private enum EditMode { Blocks, Code }
+    private record LineNoteInfo(string Text, string Css);
+
+    private const string ModeKey = "whatthecode.mode";
 
     private const int BetweenBoardsMs = 650;
     private const int MaxNesting = 3;
@@ -284,7 +350,7 @@
     private Guid? _lastFollowed;
 
     /// <summary>On the very first level, gently point at the blocks until something is added.</summary>
-    private bool ShowFirstTimeHint => _level.Number == 1 && _program.Count == 0 && !_running && !Progress.IsSolved(1);
+    private bool ShowFirstTimeHint => _mode == EditMode.Blocks && _level.Number == 1 && _program.Count == 0 && !_running && !Progress.IsSolved(1);
     private CancellationTokenSource? _cts;
 
     // Debugging: pause, step, speed, and what the program just decided.
@@ -295,6 +361,18 @@
     private string? _lastAction;
     private (Guid Id, bool Answer)? _check;
     private IReadOnlyDictionary<Guid, int>? _passes;
+
+    // Pro mode: the program as typed C#.
+    private EditMode _mode = EditMode.Blocks;
+    private string _codeText = "";
+    private CodeError? _codeError;
+    private IReadOnlyDictionary<Guid, int> _codeLines = new Dictionary<Guid, int>();
+    private bool _switchBlocked;
+
+    private bool CanRun => _program.Count > 0 && (_mode == EditMode.Blocks || _codeError is null);
+    private string[] CodeTextLines => _codeText.Replace("\r", "").Split('\n');
+    private int EditorLineCount => Math.Max(6, CodeTextLines.Length + 1);
+    private const string CodePlaceholder = "// Type C# here, or tap a snippet.";
 
     private int StepDelayMs => _speed switch { Speed.Slow => 800, Speed.Fast => 140, _ => 380 };
     private int CheckDelayMs => _speed switch { Speed.Slow => 650, Speed.Fast => 90, _ => 260 };
@@ -313,6 +391,13 @@
         if (firstRender)
         {
             await Progress.LoadAsync();
+            try
+            {
+                if (await JS.InvokeAsync<string?>("localStorage.getItem", ModeKey) == nameof(EditMode.Code))
+                    _mode = EditMode.Code;
+            }
+            catch (JSException) { /* stay in blocks */ }
+
             var resumeAt = LevelCatalog.All.FirstOrDefault(l => !Progress.IsSolved(l.Number)) ?? LevelCatalog.All[^1];
             LoadLevel(resumeAt);
             StateHasChanged();
@@ -333,13 +418,19 @@
                 await JS.InvokeVoidAsync("wtc.revealBlock", id.ToString(), 150);
             }
 
-            // While stepping (or after a crash), keep the highlighted block in view.
+            // While stepping (or after a crash), keep the highlighted block or line in view.
             var follow = _paused ? _activeId : _failedId;
             if (follow is { } focus && focus != _lastFollowed)
             {
                 _lastFollowed = focus;
-                await JS.InvokeVoidAsync("wtc.revealBlock", focus.ToString(), 56);
+                if (_mode == EditMode.Code)
+                    await JS.InvokeVoidAsync("wtc.revealSelector", ".editor-line.is-active");
+                else
+                    await JS.InvokeVoidAsync("wtc.revealBlock", focus.ToString(), 56);
             }
+
+            if (_mode == EditMode.Code && !_running)
+                await JS.InvokeVoidAsync("wtc.enhanceEditor", "code-editor");
         }
         catch (JSException)
         {
@@ -390,6 +481,10 @@
         _answerPaths = new();
         _nudge = false;
         _scrollLevelStrip = true;
+        _codeText = "";
+        _codeError = null;
+        _codeLines = new Dictionary<Guid, int>();
+        _switchBlocked = false;
         ClearRunState();
         _status = new(StatusKind.Idle, ReadyEmpty);
     }
@@ -406,6 +501,11 @@
     private void LoadAnswer()
     {
         if (_running) return;
+        if (_mode == EditMode.Code)
+        {
+            ApplyCode(TextOf(_level.Solution()));
+            return;
+        }
         _program = _level.Solution();
         _target = null;
         OnProgramEdited();
@@ -470,6 +570,11 @@
 
     private void ClearProgram()
     {
+        if (_mode == EditMode.Code)
+        {
+            ApplyCode("");
+            return;
+        }
         _program.Clear();
         _target = null;
         OnProgramEdited();
@@ -702,7 +807,135 @@
         foreach (var s in _sessions) s.Reset();
         _boardStates = new BoardState[_sessions.Count];
         ClearRunState();
-        _status = new(StatusKind.Idle, _program.Count == 0 ? ReadyEmpty : ReadyToRun);
+        _status = new(StatusKind.Idle,
+            _mode == EditMode.Code && _codeError is not null ? "Fix the line marked in red, then press Run."
+            : _program.Count == 0 ? ReadyEmpty
+            : ReadyToRun);
+    }
+
+    // ---------- Pro mode (typed C#) ----------
+
+    private async Task SetModeAsync(EditMode mode)
+    {
+        if (_running || mode == _mode) return;
+
+        if (mode == EditMode.Code)
+        {
+            _mode = EditMode.Code;
+            ApplyCode(TextOf(_program)); // your blocks, written out as C#
+        }
+        else
+        {
+            if (_codeError is not null)
+            {
+                _switchBlocked = true;
+                return;
+            }
+            _mode = EditMode.Blocks;
+            _target = null;
+            ResetBoards();
+        }
+
+        _nudge = false;
+        try { await JS.InvokeVoidAsync("localStorage.setItem", ModeKey, mode.ToString()); }
+        catch (JSException) { /* preference just won't stick */ }
+    }
+
+    private void OnCodeInput(ChangeEventArgs e) => ApplyCode(e.Value?.ToString() ?? "");
+
+    /// <summary>Reads the typed code. If it's valid for this level, it becomes the program.</summary>
+    private void ApplyCode(string text)
+    {
+        _codeText = text;
+        _switchBlocked = false;
+
+        var result = CodeParser.Parse(text);
+        _codeError = result.Error
+            ?? CodeParser.CheckAllowed(result.Program!, _level.Blocks.ToHashSet(), result.Lines, _level.Number);
+
+        if (_codeError is null)
+        {
+            _program = result.Program!;
+            _codeLines = result.Lines;
+            _target = null;
+        }
+
+        ResetBoards();
+    }
+
+    private async Task InsertSnippetAsync(BlockKind kind)
+    {
+        if (_running) return;
+        try { await JS.InvokeVoidAsync("wtc.insertSnippet", "code-editor", SnippetFor(kind)); }
+        catch (JSException) { ApplyCode(_codeText + (_codeText.Length > 0 ? "\n" : "") + SnippetFor(kind).Replace("$0", "")); }
+    }
+
+    private static string TextOf(IReadOnlyList<Instruction> program) =>
+        program.Count == 0 ? "" : string.Join("\n", CodeGenerator.Generate(program).Select(l => l.Text));
+
+    private static string SnippetFor(BlockKind kind) => kind switch
+    {
+        BlockKind.MoveForward     => "bot.MoveForward();$0",
+        BlockKind.TurnLeft        => "bot.TurnLeft();$0",
+        BlockKind.TurnRight       => "bot.TurnRight();$0",
+        BlockKind.Repeat          => "for (int i = 0; i < 3; i++)\n{\n    $0\n}",
+        BlockKind.RepeatUntilFlag => "while (!bot.AtFlag())\n{\n    $0\n}",
+        BlockKind.If              => "if (bot.PathAhead())\n{\n    $0\n}\nelse\n{\n    \n}",
+        _                         => ""
+    };
+
+    private static string SnippetLabel(BlockKind kind) => kind switch
+    {
+        BlockKind.MoveForward     => "MoveForward();",
+        BlockKind.TurnLeft        => "TurnLeft();",
+        BlockKind.TurnRight       => "TurnRight();",
+        BlockKind.Repeat          => "for loop",
+        BlockKind.RepeatUntilFlag => "while loop",
+        BlockKind.If              => "if / else",
+        _                         => kind.ToString()
+    };
+
+    private int? LineOf(Guid? id) => id is { } g && _codeLines.TryGetValue(g, out var line) ? line : null;
+
+    private string GutterClass(int line) =>
+        _codeError?.Line == line ? "is-error"
+        : _running && LineOf(_activeId) == line ? "is-active"
+        : LineOf(_failedId) == line ? "is-failed"
+        : "";
+
+    private string LineState(int line) =>
+        LineOf(_activeId) == line ? "is-active"
+        : LineOf(_failedId) == line ? "is-failed"
+        : "";
+
+    /// <summary>While running: what an if just found, or which pass a loop is on, shown at the end of its line.</summary>
+    private LineNoteInfo? LineNote(int line)
+    {
+        if (_check is { } c && LineOf(c.Id) == line && FindBlock(_program, c.Id) is { } checkedBlock)
+        {
+            return checkedBlock.Kind == BlockKind.RepeatUntilFlag
+                ? new(c.Answer ? "  // ✓ there" : "  // not yet", c.Answer ? "yes" : "no")
+                : new(c.Answer ? "  // ✓ yes" : "  // ✗ no", c.Answer ? "yes" : "no");
+        }
+
+        if (_passes is null) return null;
+        foreach (var (id, pass) in _passes)
+        {
+            if (LineOf(id) != line || FindBlock(_program, id) is not { } loop) continue;
+            return new(loop.Kind == BlockKind.Repeat ? $"  // {pass} of {loop.Count}" : $"  // pass {pass}", "pass");
+        }
+        return null;
+    }
+
+    private static Instruction? FindBlock(IEnumerable<Instruction> list, Guid id)
+    {
+        foreach (var b in list)
+        {
+            if (b.Id == id) return b;
+            foreach (var child in b.ChildLists)
+                if (FindBlock(child, id) is { } found) return found;
+        }
+        return null;
     }
 
     private void ClearRunState()

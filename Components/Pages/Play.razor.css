@@ -299,7 +299,139 @@
     gap: 1rem;
 }
 
-.block-count { font-size: .9rem; color: var(--ink-soft); }
+.program-head h3 { margin: 0; }
+
+.block-count {
+    margin: .2rem 0 .5rem;
+    font-size: .9rem;
+    color: var(--ink-soft);
+}
+
+/* Blocks | Code switch */
+.mode-toggle {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 10px;
+    background: var(--paper-raised);
+    border: 2px solid var(--mat-line);
+}
+
+.mode-toggle button {
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--ink-soft);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: .92rem;
+    padding: .3rem .8rem;
+    cursor: pointer;
+}
+
+.mode-toggle button.is-on { background: var(--ink); color: #fff; }
+.mode-toggle button:disabled { cursor: default; }
+
+/* ---------- Code editor (Pro mode) ---------- */
+
+.editor {
+    --code-size: .9rem;
+    --code-line: 1.6;
+    display: flex;
+    align-items: flex-start;
+    border-radius: 12px;
+    background: var(--ink);
+    overflow-x: auto;
+    border: 2px solid transparent;
+}
+
+.editor:focus-within { border-color: var(--highlight); }
+.editor.has-error { border-color: var(--danger); }
+
+.gutter {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 6px 12px 10px;
+    text-align: right;
+    font-family: var(--font-code);
+    font-size: var(--code-size);
+    line-height: var(--code-line);
+    color: #6F80A0;
+    user-select: none;
+}
+
+.gutter span { padding: 0 4px; border-radius: 4px; }
+.gutter .is-error  { background: var(--danger); color: #fff; }
+.gutter .is-failed { background: var(--danger); color: #fff; }
+.gutter .is-active { background: var(--highlight); color: var(--ink); }
+
+.editor-input,
+.editor-view {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 12px 14px 12px 6px;
+    border: 0;
+    background: transparent;
+    color: var(--code-ink);
+    font-family: var(--font-code);
+    font-size: var(--code-size);
+    line-height: var(--code-line);
+    white-space: pre;
+    tab-size: 4;
+}
+
+.editor-input {
+    resize: none;
+    overflow: hidden;
+    outline: none;
+    caret-color: var(--highlight);
+}
+
+.editor-input::placeholder { color: #6F80A0; }
+
+.editor-line {
+    display: block;
+    width: max-content;
+    min-width: 100%;
+    min-height: calc(var(--code-size) * var(--code-line));
+    padding-right: 14px;
+}
+.editor-line.is-active { background: var(--highlight); color: var(--ink); }
+.editor-line.is-failed { background: var(--danger); color: #fff; }
+
+.line-note { font-style: italic; }
+.line-note.yes  { color: #7EE2B8; }
+.line-note.no   { color: #FF9AA8; }
+.line-note.pass { color: #C9B6FF; }
+.editor-line.is-active .line-note { color: var(--ink); opacity: .75; }
+
+.code-error {
+    margin: .6rem 0 0;
+    padding: .6rem .8rem;
+    border-radius: 10px;
+    background: var(--danger-soft);
+    border-left: 4px solid var(--danger);
+    line-height: 1.45;
+}
+
+.code-error-note {
+    margin: .4rem 0 0;
+    font-size: .9rem;
+    color: var(--danger-shadow);
+}
+
+.code-help {
+    margin: .5rem 0 0;
+    font-size: .85rem;
+    color: var(--ink-soft);
+}
+
+.palette-code {
+    font-family: var(--font-code);
+    font-weight: 700;
+    font-size: .9rem;
+}
 
 .target-note {
     margin: 0 0 .5rem;
@@ -367,7 +499,7 @@
 
 .btn-pause { background: var(--ink); color: #fff; box-shadow: 0 3px 0 #0E1828; padding-inline: 1.3rem; }
 
-.btn-speed { min-width: 52px; }
+.btn-speed { min-width: 50px; padding-inline: .7rem; font-size: 1.1rem; }
 
 .status.is-paused { border-color: var(--ink); }
 
@@ -594,6 +726,11 @@
     .program-empty { padding: 1.4rem .5rem; }
 
     .bridge .code { font-size: .8rem; }
+
+    /* 16px stops iPhones zooming in when the editor gets focus. */
+    .editor { --code-size: 16px; --code-line: 1.45; }
+    .code-help { display: none; }
+    .mode-toggle button { padding: .3rem .7rem; }
 }
 
 @media (max-width: 380px) {
