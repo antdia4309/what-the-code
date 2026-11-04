@@ -29,7 +29,11 @@ Most coding education tools pick a lane — either too simple for adults or too 
 | 5 | Debugging tools — pause, step, speed, visible decisions, loop counters | ✅ Complete |
 | 6 | Pro mode — type real C# instead of blocks, with beginner-friendly errors | ✅ Complete |
 | 7 | Level editor with share links, and badges | ✅ Complete |
-| 8 | Daily puzzle, new block types | 🔲 Next |
+| 8 | First-run experience, concept cards, dark mode | 🔲 Next |
+| 9 | Anonymous play stats, "share my solution", install as an app | 🔲 Planned |
+| 10–15 | Functions, Part 3 levels, daily puzzle, Python, JavaScript, gems & variables, level packs | 🔲 Planned |
+
+See **[ROADMAP.md](ROADMAP.md)** for who the game is for, the principles behind it, and what "done" means for each session.
 
 ---
 
