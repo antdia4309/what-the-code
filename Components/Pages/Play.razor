@@ -4,6 +4,9 @@
 @using WhatTheCode.Services
 @inject ProgressStore Progress
 @inject IJSRuntime JS
+@inject BadgeStore Badges
+@inject DraftLevel Draft
+@inject NavigationManager Nav
 
 <PageTitle>What the CODE? · Level @_level.Number</PageTitle>
 
@@ -32,12 +35,26 @@
                 }
             </ol>
         </nav>
+
+        <div class="top-actions">
+            <button type="button" class="top-btn" @onclick="() => _showBadges = true" aria-label="Badges: @Badges.Count of @BadgeCatalog.All.Count earned">
+                <span aria-hidden="true">🏅</span><span class="top-btn-text">@Badges.Count/@BadgeCatalog.All.Count</span>
+            </button>
+            <a class="top-btn" href="make" aria-label="Make your own level">
+                <span aria-hidden="true">🛠️</span><span class="top-btn-text wide-only">Make</span>
+            </a>
+        </div>
     </header>
+
+    @if (_customProblem is not null)
+    {
+        <p class="link-problem" role="alert">@_customProblem Here's the main game instead.</p>
+    }
 
     <main class="stage">
         <section class="intro" aria-labelledby="level-title">
             <h2 id="level-title" class="level-title">
-                <span class="level-tag">Level @_level.Number</span>
+                <span class="level-tag">@(_testing ? "Testing your level" : _level.IsCustom ? "Player-made level" : $"Level {_level.Number}")</span>
                 @_level.Title
             </h2>
 
@@ -90,13 +107,27 @@
                     <p class="stars-earned" aria-label="@_earnedStars of 3 stars">@StarText(_earnedStars, showEmpty: true)</p>
                 }
                 <p>@_status.Message</p>
-                @if (_status.Kind == StatusKind.Success && NextLevel is not null)
+                @if (_status.Kind == StatusKind.Success && _testing && _shareLink is not null)
+                {
+                    <div class="share">
+                        <input class="share-link" readonly value="@_shareLink" aria-label="Link to your level" @onfocus="SelectShareLink" />
+                        <div class="share-actions">
+                            <button type="button" class="btn btn-next" @onclick="CopyShareLinkAsync">@(_copied ? "✓ Copied" : "Copy link")</button>
+                            <a class="btn btn-quiet" href="make">Back to editor</a>
+                        </div>
+                    </div>
+                }
+                else if (_status.Kind == StatusKind.Success && _level.IsCustom)
+                {
+                    <a class="btn btn-next" href="make">Make your own level</a>
+                }
+                else if (_status.Kind == StatusKind.Success && NextLevel is not null)
                 {
                     <button type="button" class="btn btn-next" @onclick="() => SelectLevel(NextLevel)">Next level</button>
                 }
                 else if (_status.Kind == StatusKind.Success)
                 {
-                    <p class="all-done">That's every level so far. Try earning three stars on each one.</p>
+                    <p class="all-done">That's every level so far. Try getting three stars on each one, or <a href="make">make your own level</a>.</p>
                 }
             </div>
             }
@@ -104,7 +135,13 @@
 
         <section class="help-panel" aria-label="Tips and hints">
             <p class="tip">@_level.Tip</p>
+            @if (_testing)
+            {
+                <a class="back-to-editor" href="make">← Back to the editor</a>
+            }
 
+            @if (!_level.IsCustom)
+            {
             <div class="help" aria-live="polite">
                 @for (int i = 0; i < _hintsShown; i++)
                 {
@@ -146,6 +183,7 @@
                     </div>
                 }
             </div>
+            }
         </section>
 
         <section class="workshop" aria-label="Build your program">
@@ -302,6 +340,43 @@
             }
         </section>
     </main>
+
+    @if (_toast is not null)
+    {
+        <div class="toast" role="status" aria-live="polite">
+            <span class="toast-title">Badge earned!</span>
+            @foreach (var b in _toast)
+            {
+                <span class="toast-badge"><span aria-hidden="true">@b.Emoji</span> @b.Name</span>
+            }
+        </div>
+    }
+
+    @if (_showBadges)
+    {
+        <div class="overlay" @onclick="() => _showBadges = false" @onkeydown="CabinetKey">
+            <div class="cabinet" role="dialog" aria-modal="true" aria-labelledby="cabinet-title" @onclick:stopPropagation="true">
+                <div class="cabinet-head">
+                    <h2 id="cabinet-title">Badges <span class="cabinet-count">@Badges.Count of @BadgeCatalog.All.Count</span></h2>
+                    <button type="button" class="chip-close cabinet-close" aria-label="Close" @onclick="() => _showBadges = false">✕</button>
+                </div>
+                <ul class="badge-list">
+                    @foreach (var badge in BadgeCatalog.All)
+                    {
+                        var earned = Badges.Has(badge.Id);
+                        <li class="badge @(earned ? "is-earned" : "")">
+                            <span class="badge-emoji" aria-hidden="true">@(earned ? badge.Emoji : "🔒")</span>
+                            <span class="badge-text">
+                                <strong>@badge.Name</strong>
+                                <span>@badge.HowToEarn</span>
+                            </span>
+                            <span class="visually-hidden">@(earned ? "Earned" : "Not earned yet")</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
@@ -362,6 +437,21 @@
     private (Guid Id, bool Answer)? _check;
     private IReadOnlyDictionary<Guid, int>? _passes;
 
+    // Player-made levels and badges
+    [SupplyParameterFromQuery(Name = "custom")] public string? CustomCode { get; set; }
+    [SupplyParameterFromQuery(Name = "test")] public string? TestFlag { get; set; }
+
+    private bool _testing;          // solving a level from the editor to set its par
+    private string? _shareLink;
+    private bool _copied;
+    private string? _customProblem;
+    private bool _showBadges;
+    private bool _cabinetWasOpen;
+    private List<Badge>? _toast;
+    private CancellationTokenSource? _toastCts;
+    private bool _usedStep;
+    private int _failedRuns;
+
     // Pro mode: the program as typed C#.
     private EditMode _mode = EditMode.Blocks;
     private string _codeText = "";
@@ -398,8 +488,23 @@
             }
             catch (JSException) { /* stay in blocks */ }
 
-            var resumeAt = LevelCatalog.All.FirstOrDefault(l => !Progress.IsSolved(l.Number)) ?? LevelCatalog.All[^1];
-            LoadLevel(resumeAt);
+            await Badges.LoadAsync();
+
+            if (TestFlag == "1" && Draft.Spec is { } draft)
+            {
+                LoadLevel(CustomLevels.ToLevel(draft));
+                _testing = true;
+            }
+            else if (CustomCode is not null && CustomLevels.Decode(CustomCode, out var problem) is { } shared)
+            {
+                LoadLevel(CustomLevels.ToLevel(shared));
+            }
+            else
+            {
+                if (CustomCode is not null) _customProblem = "That level link didn't work.";
+                var resumeAt = LevelCatalog.All.FirstOrDefault(l => !Progress.IsSolved(l.Number)) ?? LevelCatalog.All[^1];
+                LoadLevel(resumeAt);
+            }
             StateHasChanged();
             return;
         }
@@ -431,6 +536,13 @@
 
             if (_mode == EditMode.Code && !_running)
                 await JS.InvokeVoidAsync("wtc.enhanceEditor", "code-editor");
+
+            // Move keyboard focus into the badge cabinet when it opens.
+            if (_showBadges != _cabinetWasOpen)
+            {
+                _cabinetWasOpen = _showBadges;
+                if (_showBadges) await JS.InvokeVoidAsync("wtc.focus", ".cabinet-close");
+            }
         }
         catch (JSException)
         {
@@ -464,7 +576,11 @@
     private void SelectLevel(Level level)
     {
         if (_running || !Progress.IsUnlocked(level.Number)) return;
+        var leavingCustom = _level.IsCustom;
+        _testing = false;
+        _customProblem = null;
         LoadLevel(level);
+        if (leavingCustom) Nav.NavigateTo(Nav.BaseUri, replace: true);
     }
 
     private void LoadLevel(Level level)
@@ -485,6 +601,10 @@
         _codeError = null;
         _codeLines = new Dictionary<Guid, int>();
         _switchBlocked = false;
+        _shareLink = null;
+        _copied = false;
+        _usedStep = false;
+        _failedRuns = 0;
         ClearRunState();
         _status = new(StatusKind.Idle, ReadyEmpty);
     }
@@ -726,6 +846,7 @@
     /// <summary>Runs the next block, then pauses. Starts a paused run if nothing is running.</summary>
     private async Task StepAsync()
     {
+        _usedStep = true;
         if (!_running)
         {
             await RunAsync(startPaused: true);
@@ -778,6 +899,7 @@
     private void Fail(int board, Guid? blockId, string message)
     {
         _paused = false;
+        _failedRuns++;
         _boardStates[board] = BoardState.Failed;
         _activeId = null;
         _failedId = blockId;
@@ -788,16 +910,88 @@
     private async Task CompleteLevelAsync()
     {
         var used = BlocksUsed;
-        _earnedStars = _answerRevealed ? 1 : _level.StarsFor(used);
-        await Progress.RecordAsync(_level.Number, _earnedStars);
-
         var where = _sessions.Count > 1 ? $"on all {_sessions.Count} boards " : "";
-        var message = _answerRevealed
-            ? $"Flag reached {where}with the answer's help, so this one's worth 1 star. Replay it on your own for 3."
-            : used <= _level.Par
-            ? $"Flag reached {where}with {used} {(used == 1 ? "block" : "blocks")}. That's par. Nicely done."
-            : $"Flag reached {where}with {used} blocks. Par is {_level.Par}. Can you do it with fewer?";
-        _status = new(StatusKind.Success, message);
+        var earned = new List<Badge>();
+        async Task Award(string id) { if (await Badges.AwardAsync(id) is { } b) earned.Add(b); }
+
+        if (_testing && Draft.Spec is { } draft)
+        {
+            // The maker's own solve sets the par to beat.
+            Draft.Spec = draft with { Par = used };
+            _shareLink = $"{Nav.BaseUri}?custom={CustomLevels.Encode(Draft.Spec)}";
+            _earnedStars = 3;
+            _status = new(StatusKind.Success, $"Your level works! Par is set to {used} {(used == 1 ? "block" : "blocks")}. Share the link and see who can match it.");
+            await Award(BadgeCatalog.LevelMaker);
+        }
+        else if (_level.IsCustom)
+        {
+            _earnedStars = _level.StarsFor(used);
+            _status = new(StatusKind.Success,
+                used < _level.Par ? $"You beat it with {used} {(used == 1 ? "block" : "blocks")}. That's better than the maker's {_level.Par}!"
+                : used == _level.Par ? $"You beat it with {used} {(used == 1 ? "block" : "blocks")}, matching the maker's par. Nice."
+                : $"You beat it with {used} blocks. The maker did it in {_level.Par}. Can you get there?");
+            await Award(BadgeCatalog.GuestStar);
+        }
+        else
+        {
+            _earnedStars = _answerRevealed ? 1 : _level.StarsFor(used);
+            await Progress.RecordAsync(_level.Number, _earnedStars);
+
+            _status = new(StatusKind.Success, _answerRevealed
+                ? $"Flag reached {where}with the answer's help, so this one's worth 1 star. Replay it on your own for 3."
+                : used <= _level.Par
+                ? $"Flag reached {where}with {used} {(used == 1 ? "block" : "blocks")}. That's par. Nicely done."
+                : $"Flag reached {where}with {used} blocks. Par is {_level.Par}. Can you do it with fewer?");
+
+            await Award(BadgeCatalog.FirstFlag);
+            if (!_answerRevealed && _hintsShown == 0 && _level.Number >= 7) await Award(BadgeCatalog.NoHints);
+            if (_level.Number == 12) await Award(BadgeCatalog.MazeMaster);
+            if (AllThreeStars(1, 6)) await Award(BadgeCatalog.PartOne);
+            if (AllThreeStars(7, 12)) await Award(BadgeCatalog.PartTwo);
+        }
+
+        if (_usedStep) await Award(BadgeCatalog.BugHunter);
+        if (_mode == EditMode.Code) await Award(BadgeCatalog.ProCoder);
+        if (_failedRuns >= 5) await Award(BadgeCatalog.NeverGiveUp);
+
+        if (earned.Count > 0) _ = ShowToastAsync(earned);
+    }
+
+    private bool AllThreeStars(int from, int to) =>
+        Enumerable.Range(from, to - from + 1).All(n => Progress.StarsFor(n) == 3);
+
+    private async Task ShowToastAsync(List<Badge> badges)
+    {
+        _toastCts?.Cancel();
+        _toastCts = new CancellationTokenSource();
+        var token = _toastCts.Token;
+        _toast = badges;
+        StateHasChanged();
+        try
+        {
+            await Task.Delay(4500, token);
+            _toast = null;
+            StateHasChanged();
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void CabinetKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") _showBadges = false;
+    }
+
+    private async Task CopyShareLinkAsync()
+    {
+        if (_shareLink is null) return;
+        try { _copied = await JS.InvokeAsync<bool>("wtc.copy", _shareLink); }
+        catch (JSException) { _copied = false; }
+    }
+
+    private async Task SelectShareLink()
+    {
+        try { await JS.InvokeVoidAsync("wtc.selectAll", ".share-link"); }
+        catch (JSException) { }
     }
 
     private void Stop() => _cts?.Cancel();
@@ -948,6 +1142,7 @@
 
     public void Dispose()
     {
+        _toastCts?.Cancel();
         _gate?.TrySetCanceled();
         _cts?.Cancel();
         _cts?.Dispose();

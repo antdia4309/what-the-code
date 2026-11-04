@@ -28,7 +28,8 @@ Most coding education tools pick a lane — either too simple for adults or too 
 | 4 | Phone-friendly — pinned board, thumb dock for blocks and Run, tap-the-board guidance | ✅ Complete |
 | 5 | Debugging tools — pause, step, speed, visible decisions, loop counters | ✅ Complete |
 | 6 | Pro mode — type real C# instead of blocks, with beginner-friendly errors | ✅ Complete |
-| 7 | Gamification — badges, daily puzzle, level editor | 🔲 Up next |
+| 7 | Level editor with share links, and badges | ✅ Complete |
+| 8 | Daily puzzle, new block types | 🔲 Next |
 
 ---
 
@@ -48,6 +49,8 @@ Most coding education tools pick a lane — either too simple for adults or too 
 - **Pro mode: type real C#.** Switch between Blocks and Code at any time; your program converts both ways. The game reads a small slice of C# (`bot.MoveForward();`, `for`, `while (!bot.AtFlag())`, `if`/`else`/`else if`, comments) and explains mistakes in plain English with the line number, e.g. *"C# is case-sensitive: write MoveForward."* Snippet buttons insert code at the cursor with the right indentation, which matters on phones.
 - **Debugging tools.** Pause a run or Step through it one block at a time, and switch between slow, normal and fast. Each If shows ✓ yes or ✗ no as it checks the board, the status line explains what happens next, and loops show which pass they're on.
 - **Helpful failure.** Crashes highlight the exact block and line. Programs that loop forever are caught and explained instead of freezing the page.
+- **Make your own levels.** Paint walls, place the bot and flag, and choose which blocks players get. Solve it yourself to set the par, then share a link. Anyone can play it, and the whole level lives in the link, so there's no server or account.
+- **Badges** for good habits as well as progress: solving without hints, debugging with Step, typing your program in Code mode, sticking with a hard level, and making levels for others.
 - **Hints when you're stuck.** Every level has two hints, gentle first. After that you can reveal the answer: its route is drawn on the board and the blocks can be loaded into your program. Solving with the answer shown earns 1 star, and replaying on your own earns the full 3.
 - **Stars and par.** Solve a level in as few blocks as possible for three stars.
 - **Saved progress.** Best stars are kept in the browser, and levels unlock in order.
@@ -61,6 +64,7 @@ Most coding education tools pick a lane — either too simple for adults or too 
 what-the-code/
 ├── Components/
 │   ├── Pages/Play.razor        # Level select, board tabs, program builder, code bridge
+│   ├── Pages/Make.razor        # Level editor
 │   ├── GameGrid.razor          # Board: walls, flag, trail, animated bot
 │   ├── BlockList.razor         # Recursive program editor (loops, If/Otherwise)
 │   ├── App.razor               # Router
@@ -79,6 +83,8 @@ what-the-code/
 │   ├── ProgramRunner.cs        # Interprets the program one action at a time
 │   ├── CodeGenerator.cs        # Blocks → real C# (the "code bridge")
 │   ├── CodeParser.cs           # Typed C# → blocks, with beginner-friendly errors
+│   ├── CustomLevels.cs         # Player-made levels: share-link encoding and checks
+│   ├── Badges.cs               # Badge catalog and storage
 │   └── ProgressStore.cs        # Best stars per level (browser localStorage)
 ├── tests/WhatTheCode.Tests/    # xUnit tests
 ├── wwwroot/                    # index.html, styles, static assets

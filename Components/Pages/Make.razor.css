@@ -1,0 +1,234 @@
+.make {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 1.25rem clamp(1rem, 3vw, 2.5rem) 3rem;
+}
+
+.make-top { margin-bottom: 1.5rem; }
+
+.back-link {
+    color: var(--ink-soft);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.back-link:hover { text-decoration: underline; }
+
+.make-title {
+    margin: .4rem 0 .2rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(1.6rem, 3vw, 2.1rem);
+}
+
+.make-lede { margin: 0; color: var(--ink-soft); line-height: 1.45; }
+
+.make-grid {
+    display: grid;
+    grid-template-columns: minmax(0, auto) minmax(300px, 400px);
+    gap: 2rem 3rem;
+    align-items: start;
+}
+
+/* ---------- tools ---------- */
+
+.tools { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.tool {
+    border: 2px solid var(--mat-line);
+    border-radius: 10px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: .98rem;
+    padding: .45rem .8rem;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.tool.is-on { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+.tool-tip { margin: .6rem 0 .9rem; color: var(--ink-soft); font-size: .92rem; }
+
+/* ---------- canvas ---------- */
+
+.canvas {
+    --cell: min(58px, calc((100vw - 3rem) / var(--cols)));
+    display: grid;
+    grid-template-columns: repeat(var(--cols), var(--cell));
+    grid-template-rows: repeat(var(--rows), var(--cell));
+    width: max-content;
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--mat);
+    box-shadow: 0 0 0 4px var(--mat-edge), 0 8px 0 4px var(--mat-edge);
+    touch-action: none; /* lets a mouse drag paint without the page scrolling */
+    user-select: none;
+}
+
+.paint-cell {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--mat-line);
+    display: grid;
+    place-items: center;
+    font-size: calc(var(--cell) * .45);
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.paint-cell:hover { background: rgba(255, 255, 255, .45); }
+.paint-cell:focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
+
+.paint-cell.wall {
+    background:
+        linear-gradient(var(--wall-mortar) 0 0) 0 50% / 100% 2px no-repeat,
+        linear-gradient(var(--wall-mortar) 0 0) 50% 0 / 2px 50% no-repeat,
+        linear-gradient(var(--wall-mortar) 0 0) 25% 100% / 2px 50% no-repeat,
+        linear-gradient(var(--wall-mortar) 0 0) 75% 100% / 2px 50% no-repeat,
+        var(--wall);
+}
+
+.paint-cell.flag { background: var(--flag-tile); }
+
+.paint-bot {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 72%;
+    height: 72%;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 3px 0 var(--bot-ring-shadow);
+    font-size: calc(var(--cell) * .38);
+}
+
+.paint-bot-nose {
+    position: absolute;
+    top: 50%;
+    right: -8px;
+    transform: translateY(-50%);
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-left: 10px solid #fff;
+}
+
+/* Rotate the pointer around the bot, keep the face upright. */
+.paint-bot.face-down  .paint-bot-nose { top: auto; bottom: -8px; right: 50%; transform: translateX(50%) rotate(90deg); }
+.paint-bot.face-left  .paint-bot-nose { right: auto; left: -8px; transform: translateY(-50%) rotate(180deg); }
+.paint-bot.face-up    .paint-bot-nose { top: -8px; right: 50%; transform: translateX(50%) rotate(-90deg); }
+
+.size-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem 1.4rem;
+    margin-top: 1.4rem;
+    font-family: var(--font-display);
+    font-weight: 500;
+}
+
+.size-group { display: inline-flex; align-items: center; gap: 6px; }
+.size-value { min-width: 1.4em; text-align: center; font-weight: 600; }
+
+.chip {
+    width: 34px;
+    height: 34px;
+    border: 2px solid var(--mat-line);
+    border-radius: 8px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    font: inherit;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+.chip:disabled { opacity: .4; cursor: default; }
+
+/* ---------- settings ---------- */
+
+.settings-side { display: flex; flex-direction: column; gap: 1.2rem; }
+
+.field { display: flex; flex-direction: column; gap: .45rem; margin: 0; padding: 0; border: 0; }
+
+.field > span, .field > legend {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.05rem;
+    padding: 0;
+    margin-bottom: .45rem;
+}
+
+.field input {
+    font: inherit;
+    font-size: 16px;
+    padding: .6rem .75rem;
+    border-radius: 10px;
+    border: 2px solid var(--mat-line);
+    background: var(--paper-raised);
+    color: var(--ink);
+}
+
+.field input:focus { outline: none; border-color: var(--ink); }
+
+.block-toggles { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.block-toggle {
+    --c: var(--move);
+    border: 2px solid var(--c);
+    border-radius: 10px;
+    background: var(--paper-raised);
+    color: var(--c);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: .92rem;
+    padding: .4rem .7rem;
+    cursor: pointer;
+}
+
+.toggle-turn { --c: var(--turn-shadow); }
+.toggle-loop { --c: var(--loop); }
+.toggle-if   { --c: var(--decide); }
+.block-toggle.is-on { background: var(--c); color: #fff; }
+
+.field-help { margin: .2rem 0 0; font-size: .88rem; color: var(--ink-soft); line-height: 1.4; }
+
+.make-problem {
+    margin: 0;
+    padding: .65rem .85rem;
+    border-radius: 10px;
+    background: var(--danger-soft);
+    border-left: 4px solid var(--danger);
+}
+
+.make-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.btn {
+    border: 0;
+    border-radius: 10px;
+    padding: .7rem 1.2rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.btn-run { background: var(--go); color: #fff; box-shadow: 0 3px 0 var(--go-shadow); padding-inline: 1.6rem; }
+.btn-quiet { background: transparent; color: var(--ink); border: 2px solid var(--mat-line); }
+
+.how-it-works {
+    margin: 0;
+    padding-left: 1.2rem;
+    color: var(--ink-soft);
+    line-height: 1.55;
+}
+
+@media (max-width: 860px) {
+    .make { padding-top: .9rem; }
+    .make-grid { grid-template-columns: minmax(0, 1fr); }
+    .canvas-side { display: flex; flex-direction: column; align-items: center; }
+    .tools { justify-content: center; }
+    .tool-tip { text-align: center; }
+    .tool { padding: .5rem .7rem; }
+}

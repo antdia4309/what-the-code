@@ -75,7 +75,8 @@ namespace WhatTheCode.Services
                     BlockKind.If              => "if checks",
                     _                         => $"bot.{block.Kind}()"
                 };
-                return new CodeError(lines.GetValueOrDefault(block.Id, 1), $"Level {levelNumber} doesn't use {what} yet. Solve it with what the snippets offer.");
+                var which = levelNumber > 0 ? $"Level {levelNumber}" : "This level";
+                return new CodeError(lines.GetValueOrDefault(block.Id, 1), $"{which} doesn't use {what}. Solve it with what the snippets offer.");
             }
             return null;
         }

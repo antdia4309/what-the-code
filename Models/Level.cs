@@ -2,7 +2,11 @@ namespace WhatTheCode.Models
 {
     public class Level
     {
+        /// <summary>Position in the built-in levels. Player-made levels use 0.</summary>
         public required int Number { get; init; }
+
+        /// <summary>True for levels made in the level editor (shared by link or being tested).</summary>
+        public bool IsCustom => Number == 0;
         public required string Title { get; init; }
 
         /// <summary>One-line nudge shown while playing.</summary>

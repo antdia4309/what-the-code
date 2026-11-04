@@ -8,5 +8,7 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddScoped<ProgressStore>();
+builder.Services.AddScoped<BadgeStore>();
+builder.Services.AddScoped<DraftLevel>();
 
 await builder.Build().RunAsync();

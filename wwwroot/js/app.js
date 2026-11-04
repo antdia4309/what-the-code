@@ -130,5 +130,28 @@ window.wtc = {
     // While a typed program runs, keep the running line in view on phones.
     revealSelector(selector) {
         this.reveal(document.querySelector(selector), 40);
+    },
+
+    // ---------- Sharing ----------
+
+    async copy(text) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch {
+            const el = document.querySelector('.share-link');
+            if (el) { el.select(); try { return document.execCommand('copy'); } catch { } }
+            return false;
+        }
+    },
+
+    focus(selector) {
+        const el = document.querySelector(selector);
+        if (el) el.focus();
+    },
+
+    selectAll(selector) {
+        const el = document.querySelector(selector);
+        if (el) el.select();
     }
 };

@@ -1,0 +1,313 @@
+@page "/make"
+@using WhatTheCode.Models
+@using WhatTheCode.Services
+@inject DraftLevel Draft
+@inject NavigationManager Nav
+
+<PageTitle>Make a level · What the CODE?</PageTitle>
+
+<div class="make" @onpointerup="StopPainting">
+    <header class="make-top">
+        <a class="back-link" href="">← Back to the game</a>
+        <h1 class="make-title">Make a level</h1>
+        <p class="make-lede">Paint a board, solve it yourself to set the par, then share the link.</p>
+    </header>
+
+    <div class="make-grid">
+        <section class="canvas-side" aria-label="Board">
+            <div class="tools" role="radiogroup" aria-label="Paint with">
+                @foreach (var tool in Enum.GetValues<Tool>())
+                {
+                    var t = tool;
+                    <button type="button" role="radio" aria-checked="@(_tool == t ? "true" : "false")"
+                            class="tool @(_tool == t ? "is-on" : "")" @onclick="() => _tool = t">
+                        <span aria-hidden="true">@ToolIcon(t)</span> @ToolName(t)
+                    </button>
+                }
+            </div>
+            <p class="tool-tip">@ToolTip</p>
+
+            <div class="canvas" style="--cols:@_cols; --rows:@_rows;" @onpointerleave="StopPainting">
+                @for (int y = 0; y < _rows; y++)
+                {
+                    @for (int x = 0; x < _cols; x++)
+                    {
+                        var cx = x; var cy = y;
+                        var c = _cells[cx, cy];
+                        <button type="button" class="paint-cell @CellClass(c)"
+                                aria-label="@CellLabel(cx, cy, c)"
+                                @onpointerdown="e => BeginPaint(e, cx, cy)"
+                                @onpointerenter="() => DragPaint(cx, cy)"
+                                @onclick="e => KeyboardPaint(e, cx, cy)">
+                            @if (c == 'F')
+                            {
+                                <span aria-hidden="true">🚩</span>
+                            }
+                            else if (IsBot(c))
+                            {
+                                <span class="paint-bot face-@Facing(c)" aria-hidden="true"><span class="paint-bot-nose"></span>🤖</span>
+                            }
+                        </button>
+                    }
+                }
+            </div>
+
+            <div class="size-controls">
+                <span class="size-group">
+                    Width
+                    <button type="button" class="chip" aria-label="Narrower" disabled="@(_cols <= CustomLevels.MinSize)" @onclick="() => Resize(-1, 0)">−</button>
+                    <span class="size-value">@_cols</span>
+                    <button type="button" class="chip" aria-label="Wider" disabled="@(_cols >= CustomLevels.MaxSize)" @onclick="() => Resize(1, 0)">+</button>
+                </span>
+                <span class="size-group">
+                    Height
+                    <button type="button" class="chip" aria-label="Shorter" disabled="@(_rows <= CustomLevels.MinSize)" @onclick="() => Resize(0, -1)">−</button>
+                    <span class="size-value">@_rows</span>
+                    <button type="button" class="chip" aria-label="Taller" disabled="@(_rows >= CustomLevels.MaxSize)" @onclick="() => Resize(0, 1)">+</button>
+                </span>
+            </div>
+        </section>
+
+        <section class="settings-side" aria-label="Level settings">
+            <label class="field">
+                <span>Name your level</span>
+                <input type="text" maxlength="@CustomLevels.MaxTitle" placeholder="e.g. The long way round"
+                       value="@_title" @oninput="e => _title = e.Value?.ToString() ?? string.Empty" />
+            </label>
+
+            <fieldset class="field">
+                <legend>Blocks players can use</legend>
+                <div class="block-toggles">
+                    @foreach (var kind in AllBlocks)
+                    {
+                        var k = kind;
+                        var on = _blocks.Contains(k);
+                        <button type="button" class="block-toggle toggle-@KindClass(k) @(on ? "is-on" : "")"
+                                aria-pressed="@(on ? "true" : "false")" @onclick="() => ToggleBlock(k)">
+                            @(on ? "✓ " : "")@Instruction.LabelFor(k)
+                        </button>
+                    }
+                </div>
+                <p class="field-help">Fewer blocks make a level harder. Leave out If, and players have to count.</p>
+            </fieldset>
+
+            @if (_problem is not null)
+            {
+                <p class="make-problem" role="alert">@_problem</p>
+            }
+
+            <div class="make-actions">
+                <button type="button" class="btn btn-run" @onclick="Test">Test my level</button>
+                <button type="button" class="btn btn-quiet" @onclick="ClearBoard">Clear board</button>
+            </div>
+
+            <ol class="how-it-works">
+                <li><strong>Build</strong> the board and pick the blocks.</li>
+                <li><strong>Solve it yourself.</strong> Your block count becomes the par to beat.</li>
+                <li><strong>Share the link.</strong> Anyone can play it, no account needed.</li>
+            </ol>
+        </section>
+    </div>
+</div>
+
+@code {
+    private enum Tool { Wall, Floor, Bot, Flag }
+
+    private static readonly BlockKind[] AllBlocks =
+        { BlockKind.MoveForward, BlockKind.TurnLeft, BlockKind.TurnRight, BlockKind.Repeat, BlockKind.RepeatUntilFlag, BlockKind.If };
+
+    private readonly char[,] _cells = new char[CustomLevels.MaxSize, CustomLevels.MaxSize];
+    private int _cols = 6, _rows = 5;
+    private Tool _tool = Tool.Wall;
+    private string _title = "";
+    private HashSet<BlockKind> _blocks = AllBlocks.ToHashSet();
+    private string? _problem;
+
+    private bool _painting;
+    private bool _paintWalls; // while dragging the wall tool: add walls (true) or remove them (false)
+
+    protected override void OnInitialized()
+    {
+        Fill('.');
+        if (Draft.Spec is { } spec)
+        {
+            _title = spec.Title;
+            _blocks = spec.Blocks.ToHashSet();
+            _rows = spec.Map.Length;
+            _cols = spec.Map[0].Length;
+            for (int y = 0; y < _rows; y++)
+                for (int x = 0; x < _cols; x++)
+                    _cells[x, y] = spec.Map[y][x];
+        }
+        else
+        {
+            _cells[0, 2] = '>';
+            _cells[5, 2] = 'F';
+        }
+    }
+
+    // ---------- painting ----------
+
+    private void BeginPaint(PointerEventArgs e, int x, int y)
+    {
+        if (e.Button != 0 && e.PointerType == "mouse") return;
+        _painting = true;
+        _paintWalls = _cells[x, y] != '#';
+        Paint(x, y, firstTouch: true);
+    }
+
+    private void DragPaint(int x, int y)
+    {
+        if (_painting && _tool is Tool.Wall or Tool.Floor) Paint(x, y, firstTouch: false);
+    }
+
+    /// <summary>Clicks from the keyboard (Enter/Space) have no pointer, so they paint here.</summary>
+    private void KeyboardPaint(MouseEventArgs e, int x, int y)
+    {
+        if (e.Detail != 0) return; // a real pointer already painted in BeginPaint
+        _paintWalls = _cells[x, y] != '#';
+        Paint(x, y, firstTouch: true);
+    }
+
+    private void StopPainting() => _painting = false;
+
+    private void Paint(int x, int y, bool firstTouch)
+    {
+        var c = _cells[x, y];
+        _problem = null;
+
+        switch (_tool)
+        {
+            case Tool.Wall:
+                if (c == 'F' || IsBot(c)) return;
+                _cells[x, y] = _paintWalls ? '#' : '.';
+                break;
+
+            case Tool.Floor:
+                _cells[x, y] = '.';
+                break;
+
+            case Tool.Bot:
+                if (!firstTouch) return;
+                if (IsBot(c))
+                {
+                    _cells[x, y] = c switch { '>' => 'v', 'v' => '<', '<' => '^', _ => '>' }; // tap again to turn it
+                    return;
+                }
+                var facing = Replace(ch => IsBot(ch)) ?? '>';
+                _cells[x, y] = facing;
+                break;
+
+            case Tool.Flag:
+                if (!firstTouch) return;
+                Replace(ch => ch == 'F');
+                _cells[x, y] = 'F';
+                break;
+        }
+    }
+
+    /// <summary>Clears any cell matching, returning what was there (so the bot keeps its facing when moved).</summary>
+    private char? Replace(Func<char, bool> match)
+    {
+        char? found = null;
+        for (int y = 0; y < _rows; y++)
+            for (int x = 0; x < _cols; x++)
+                if (match(_cells[x, y])) { found = _cells[x, y]; _cells[x, y] = '.'; }
+        return found;
+    }
+
+    private void Resize(int dCols, int dRows)
+    {
+        int cols = Math.Clamp(_cols + dCols, CustomLevels.MinSize, CustomLevels.MaxSize);
+        int rows = Math.Clamp(_rows + dRows, CustomLevels.MinSize, CustomLevels.MaxSize);
+
+        // New space starts as floor; anything outside the new size is dropped.
+        for (int y = 0; y < CustomLevels.MaxSize; y++)
+            for (int x = 0; x < CustomLevels.MaxSize; x++)
+                if (x >= cols || y >= rows || x >= _cols || y >= _rows) _cells[x, y] = '.';
+
+        _cols = cols;
+        _rows = rows;
+        _problem = null;
+    }
+
+    private void ClearBoard()
+    {
+        var bot = Replace(IsBot) ?? '>';
+        Fill('.');
+        _cells[0, 0] = bot;
+        _cells[_cols - 1, _rows - 1] = 'F';
+        _problem = null;
+    }
+
+    private void Fill(char c)
+    {
+        for (int y = 0; y < CustomLevels.MaxSize; y++)
+            for (int x = 0; x < CustomLevels.MaxSize; x++)
+                _cells[x, y] = c;
+    }
+
+    private void ToggleBlock(BlockKind kind)
+    {
+        if (!_blocks.Remove(kind)) _blocks.Add(kind);
+        _problem = null;
+    }
+
+    // ---------- testing ----------
+
+    private void Test()
+    {
+        var map = Enumerable.Range(0, _rows)
+            .Select(y => new string(Enumerable.Range(0, _cols).Select(x => _cells[x, y]).ToArray()))
+            .ToArray();
+        var spec = new CustomLevelSpec(_title.Trim(), map, AllBlocks.Where(_blocks.Contains).ToArray(), Par: null);
+
+        _problem = CustomLevels.Validate(spec, requirePar: false);
+        if (_problem is not null) return;
+
+        Draft.Spec = spec;
+        Nav.NavigateTo("?test=1");
+    }
+
+    // ---------- display ----------
+
+    private static bool IsBot(char c) => c is '>' or '<' or '^' or 'v';
+
+    private static string Facing(char c) => c switch { '<' => "left", '^' => "up", 'v' => "down", _ => "right" };
+
+    private static string CellClass(char c) => c switch
+    {
+        '#' => "wall",
+        'F' => "flag",
+        _ when IsBot(c) => "bot",
+        _ => ""
+    };
+
+    private static string CellLabel(int x, int y, char c) =>
+        $"Column {x + 1}, row {y + 1}: " + (c switch
+        {
+            '#' => "wall",
+            'F' => "flag",
+            _ when IsBot(c) => $"bot facing {Facing(c)}",
+            _ => "floor"
+        });
+
+    private static string ToolIcon(Tool t) => t switch { Tool.Wall => "🧱", Tool.Floor => "⬜", Tool.Bot => "🤖", _ => "🚩" };
+    private static string ToolName(Tool t) => t switch { Tool.Wall => "Wall", Tool.Floor => "Erase", Tool.Bot => "Bot", _ => "Flag" };
+
+    private string ToolTip => _tool switch
+    {
+        Tool.Wall  => "Tap squares to add or remove walls. With a mouse, you can drag.",
+        Tool.Floor => "Tap squares to clear them back to floor.",
+        Tool.Bot   => "Tap to place the bot. Tap it again to turn it.",
+        _          => "Tap a square to put the flag there."
+    };
+
+    private static string KindClass(BlockKind kind) => kind switch
+    {
+        BlockKind.MoveForward                         => "move",
+        BlockKind.Repeat or BlockKind.RepeatUntilFlag => "loop",
+        BlockKind.If                                  => "if",
+        _                                             => "turn"
+    };
+}
