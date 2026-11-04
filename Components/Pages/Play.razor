@@ -52,6 +52,7 @@
             {
                 <div class="board-tabs" role="tablist" aria-label="Boards">
                     <span class="board-tabs-note">One program has to solve all @_sessions.Count boards.</span>
+                    <span class="board-tabs-note-short" aria-hidden="true">Solve all:</span>
                     @for (int i = 0; i < _sessions.Count; i++)
                     {
                         var index = i;
@@ -79,7 +80,11 @@
             }
             else
             {
-            <div class="status status-@_status.Kind.ToString().ToLowerInvariant()" role="status" aria-live="polite">
+            <div class="status status-@_status.Kind.ToString().ToLowerInvariant() @(_paused ? "is-paused" : "")" role="status" aria-live="polite">
+                @if (_paused)
+                {
+                    <span class="paused-tag">Paused</span>
+                }
                 @if (_status.Kind == StatusKind.Success)
                 {
                     <p class="stars-earned" aria-label="@_earnedStars of 3 stars">@StarText(_earnedStars, showEmpty: true)</p>
@@ -162,16 +167,31 @@
                 </div>
 
                 <div class="run-controls">
-                    @if (_running)
+                    @if (!_running)
                     {
-                        <button type="button" class="btn btn-stop" @onclick="Stop">■ Stop</button>
+                        <button type="button" class="btn btn-run" disabled="@(_program.Count == 0)" @onclick="() => RunAsync()">▶ Run</button>
+                        <button type="button" class="btn btn-quiet" disabled="@(_program.Count == 0)" @onclick="StepAsync"
+                                title="Run one block at a time">Step</button>
+                        <button type="button" class="btn btn-quiet" @onclick="ResetBoards">Reset<span class="wide-only"> bot</span></button>
+                        <button type="button" class="btn btn-quiet" disabled="@(_program.Count == 0)" @onclick="ClearProgram">Clear</button>
                     }
                     else
                     {
-                        <button type="button" class="btn btn-run" disabled="@(_program.Count == 0)" @onclick="RunAsync">▶ Run</button>
+                        @if (_paused)
+                        {
+                            <button type="button" class="btn btn-run" @onclick="Resume">▶ Resume</button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-pause" @onclick="Pause">❚❚ Pause</button>
+                        }
+                        <button type="button" class="btn btn-quiet" @onclick="StepAsync" title="Run the next block, then pause">Step</button>
+                        <button type="button" class="btn btn-stop" @onclick="Stop">■ Stop</button>
                     }
-                    <button type="button" class="btn btn-quiet" disabled="@_running" @onclick="ResetBoards">Reset<span class="wide-only"> bot</span></button>
-                    <button type="button" class="btn btn-quiet" disabled="@(_running || _program.Count == 0)" @onclick="ClearProgram">Clear</button>
+                    <button type="button" class="btn btn-quiet btn-speed" @onclick="CycleSpeed"
+                            aria-label="Speed: @SpeedName. Tap to change." title="Change speed">
+                        <span aria-hidden="true">@SpeedIcon</span><span class="wide-only"> @SpeedName</span>
+                    </button>
                 </div>
             </div>
 
@@ -181,7 +201,7 @@
                     <span class="block-count">@BlocksUsed @(BlocksUsed == 1 ? "block" : "blocks") · par @_level.Par</span>
                 </div>
 
-                @if (_target is not null)
+                @if (_target is not null && !_running)
                 {
                     var owner = FindOwner(_target, _program);
                     <p class="target-note">
@@ -195,7 +215,7 @@
                     </p>
                 }
 
-                <div class="program-list @(_target is null ? "is-target" : "")"
+                <div class="program-list @(_target is null && !_running ? "is-target" : "")"
                      @onclick="() => SelectTarget(null)">
                     @if (_program.Count == 0)
                     {
@@ -204,6 +224,7 @@
                     else
                     {
                         <BlockList Items="_program" Target="_target" ActiveId="_activeId" FailedId="_failedId"
+                                   Passes="_passes" Check="_check"
                                    Disabled="_running"
                                    OnRemove="RemoveBlock" OnSelectTarget="SelectTarget"
                                    OnCountChange="ChangeCount" OnCycleCondition="CycleCondition" />
@@ -226,7 +247,8 @@
     private enum BoardState { Untried, Passed, Failed }
     private record Status(StatusKind Kind, string Message);
 
-    private const int StepDelayMs = 380;
+    private enum Speed { Slow, Normal, Fast }
+
     private const int BetweenBoardsMs = 650;
     private const int MaxNesting = 3;
     private const int PartTwoStart = 7;
@@ -259,10 +281,25 @@
     private CancellationTokenSource? _nudgeCts;
     private bool _scrollLevelStrip = true;
     private Guid? _revealBlockId;
+    private Guid? _lastFollowed;
 
     /// <summary>On the very first level, gently point at the blocks until something is added.</summary>
     private bool ShowFirstTimeHint => _level.Number == 1 && _program.Count == 0 && !_running && !Progress.IsSolved(1);
     private CancellationTokenSource? _cts;
+
+    // Debugging: pause, step, speed, and what the program just decided.
+    private Speed _speed = Speed.Normal;
+    private bool _paused;
+    private TaskCompletionSource? _gate;
+    private string? _decision;
+    private string? _lastAction;
+    private (Guid Id, bool Answer)? _check;
+    private IReadOnlyDictionary<Guid, int>? _passes;
+
+    private int StepDelayMs => _speed switch { Speed.Slow => 800, Speed.Fast => 140, _ => 380 };
+    private int CheckDelayMs => _speed switch { Speed.Slow => 650, Speed.Fast => 90, _ => 260 };
+    private string SpeedName => _speed switch { Speed.Slow => "Slow", Speed.Fast => "Fast", _ => "Normal" };
+    private string SpeedIcon => _speed switch { Speed.Slow => "🐢", Speed.Fast => "🐇", _ => "🚶" };
     private Status _status = new(StatusKind.Idle, ReadyEmpty);
 
     private GameSession ShownSession => _sessions[_shown];
@@ -293,7 +330,15 @@
             if (_revealBlockId is { } id)
             {
                 _revealBlockId = null;
-                await JS.InvokeVoidAsync("wtc.revealBlock", id.ToString());
+                await JS.InvokeVoidAsync("wtc.revealBlock", id.ToString(), 150);
+            }
+
+            // While stepping (or after a crash), keep the highlighted block in view.
+            var follow = _paused ? _activeId : _failedId;
+            if (follow is { } focus && focus != _lastFollowed)
+            {
+                _lastFollowed = focus;
+                await JS.InvokeVoidAsync("wtc.revealBlock", focus.ToString(), 56);
             }
         }
         catch (JSException)
@@ -437,15 +482,16 @@
 
     // ---------- Running ----------
 
-    private async Task RunAsync()
+    private async Task RunAsync(bool startPaused = false)
     {
         if (_running || _program.Count == 0) return;
 
         ResetBoards();
         _running = true;
-        _status = new(StatusKind.Running, "Running…");
+        _paused = startPaused;
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
+        ShowRunStatus();
 
         try
         {
@@ -455,28 +501,51 @@
                 var session = _sessions[board];
                 var runner = new ProgramRunner(session);
                 var prefix = _sessions.Count > 1 ? $"Board {board + 1}: " : "";
+                _passes = runner.Passes;
 
                 StateHasChanged();
-                await Task.Delay(board == 0 ? 150 : BetweenBoardsMs, token);
+                if (board == 0) await Task.Delay(150, token);
+                else await WaitAsync(BetweenBoardsMs, token);
 
                 foreach (var step in runner.Run(_program))
                 {
                     _activeId = step.Source.Id;
-                    var outcome = session.Apply(step.Action);
-                    StateHasChanged();
 
-                    if (outcome is StepOutcome.HitWall or StepOutcome.HitEdge)
+                    if (step.IsAction)
                     {
-                        Fail(board, step.Source.Id, prefix + (outcome == StepOutcome.HitWall
-                            ? "Bonk! The highlighted block drove the bot into a wall."
-                            : "Whoa, the highlighted block tried to drive off the edge of the board."));
-                        return;
+                        _check = null;
+                        _decision = null;
+                        _lastAction = step.Action switch
+                        {
+                            BlockKind.TurnLeft  => "Turned left.",
+                            BlockKind.TurnRight => "Turned right.",
+                            _                   => "Moved forward."
+                        };
+                        var outcome = session.Apply(step.Action);
+
+                        if (outcome is StepOutcome.HitWall or StepOutcome.HitEdge)
+                        {
+                            Fail(board, step.Source.Id, prefix + (outcome == StepOutcome.HitWall
+                                ? "Bonk! The highlighted block drove the bot into a wall."
+                                : "Whoa, the highlighted block tried to drive off the edge of the board."));
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        _check = (step.Source.Id, step.Answer);
+                        _decision = Explain(step);
+                        _lastAction = null;
                     }
 
-                    await Task.Delay(StepDelayMs, token);
+                    ShowRunStatus();
+                    StateHasChanged();
+                    await WaitAsync(step.IsAction ? StepDelayMs : CheckDelayMs, token);
                 }
 
                 _activeId = null;
+                _check = null;
+                _decision = null;
 
                 if (runner.RanOutOfSteps)
                 {
@@ -503,14 +572,107 @@
         finally
         {
             _running = false;
+            _paused = false;
+            _gate = null;
+            _check = null;
+            _passes = null;
+            _decision = null;
+            _lastAction = null;
             _cts?.Dispose();
             _cts = null;
             StateHasChanged();
         }
     }
 
+    /// <summary>Waits between steps. While paused, waits until Step or Resume instead.</summary>
+    private async Task WaitAsync(int ms, CancellationToken token)
+    {
+        if (!_paused)
+        {
+            await Task.Delay(ms, token);
+            if (!_paused) return; // Pause was pressed mid-delay: fall through and hold here
+        }
+
+        _gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        ShowRunStatus();
+        StateHasChanged();
+
+        using (token.Register(() => _gate?.TrySetCanceled()))
+            await _gate.Task;
+
+        _gate = null;
+    }
+
+    private void Pause()
+    {
+        if (!_running || _paused) return;
+        _paused = true;
+        ShowRunStatus();
+    }
+
+    private void Resume()
+    {
+        if (!_running) return;
+        _paused = false;
+        ShowRunStatus();
+        _gate?.TrySetResult();
+    }
+
+    /// <summary>Runs the next block, then pauses. Starts a paused run if nothing is running.</summary>
+    private async Task StepAsync()
+    {
+        if (!_running)
+        {
+            await RunAsync(startPaused: true);
+            return;
+        }
+
+        if (!_paused)
+        {
+            Pause();
+            return;
+        }
+
+        _gate?.TrySetResult();
+    }
+
+    private void CycleSpeed() =>
+        _speed = _speed switch { Speed.Slow => Speed.Normal, Speed.Normal => Speed.Fast, _ => Speed.Slow };
+
+    private void ShowRunStatus()
+    {
+        var message = _decision
+            ?? (_paused
+                ? (_lastAction ?? "Ready.") + " Step runs the next block. Resume carries on from here."
+                : "Running…");
+        _status = new(StatusKind.Running, message);
+    }
+
+    /// <summary>Says out loud what an If or Repeat-until just decided, and what happens next.</summary>
+    private static string Explain(ProgramStep step)
+    {
+        var block = step.Source;
+
+        if (block.Kind == BlockKind.RepeatUntilFlag)
+            return step.Answer
+                ? "At the flag? Yes, so the loop stops."
+                : "At the flag? Not yet, so the loop goes again.";
+
+        var question = char.ToUpper(block.ConditionLabel[0]) + block.ConditionLabel[1..] + "?";
+
+        if (step.Answer)
+            return block.Body.Count > 0
+                ? $"{question} Yes, so the top part runs."
+                : $"{question} Yes, but the top part is empty, so nothing happens.";
+
+        return block.ElseBody.Count > 0
+            ? $"{question} No, so the Otherwise part runs."
+            : $"{question} No, and there's no Otherwise part, so it skips ahead.";
+    }
+
     private void Fail(int board, Guid? blockId, string message)
     {
+        _paused = false;
         _boardStates[board] = BoardState.Failed;
         _activeId = null;
         _failedId = blockId;
@@ -553,6 +715,7 @@
 
     public void Dispose()
     {
+        _gate?.TrySetCanceled();
         _cts?.Cancel();
         _cts?.Dispose();
         _nudgeCts?.Cancel();
@@ -612,7 +775,7 @@
 
     private string LineClass(CodeLine line)
     {
-        if (line.SourceId is null) return "";
+        if (line.SourceId is null || !line.IsStatement) return "";
         if (line.SourceId == _activeId) return "is-active";
         if (line.SourceId == _failedId) return "is-failed";
         return "";

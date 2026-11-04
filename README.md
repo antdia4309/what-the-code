@@ -26,8 +26,8 @@ Most coding education tools pick a lane — either too simple for adults or too 
 | 2 | Program builder + levels — build a program, run it, reach the flag | ✅ Complete |
 | 3 | Decisions + deployment — If/Otherwise, Repeat until, multi-board levels, WebAssembly on GitHub Pages | ✅ Complete |
 | 4 | Phone-friendly — pinned board, thumb dock for blocks and Run, tap-the-board guidance | ✅ Complete |
-| 5 | Debugging tools — step through, speed control, predicted path | 🔲 Up next |
-| 6 | Pro mode — type real C# instead of blocks | 🔲 Planned |
+| 5 | Debugging tools — pause, step, speed, visible decisions, loop counters | ✅ Complete |
+| 6 | Pro mode — type real C# instead of blocks | 🔲 Up next |
 | 7 | Gamification — badges, daily puzzle, level editor | 🔲 Planned |
 
 ---
@@ -45,6 +45,7 @@ Most coding education tools pick a lane — either too simple for adults or too 
 - **Blocks:** Move forward, Turn left, Turn right, Repeat, Repeat until flag, and If (path ahead / left / right) with an Otherwise branch. Blocks nest up to three deep.
 - **One program, many boards.** Later levels have several boards, so counting steps stops working and the program has to make real decisions.
 - **Live code bridge.** The program is shown as real C# (`for`, `while`, `if`/`else`), and the running line lights up in sync with its block.
+- **Debugging tools.** Pause a run or Step through it one block at a time, and switch between slow, normal and fast. Each If shows ✓ yes or ✗ no as it checks the board, the status line explains what happens next, and loops show which pass they're on.
 - **Helpful failure.** Crashes highlight the exact block and line. Programs that loop forever are caught and explained instead of freezing the page.
 - **Hints when you're stuck.** Every level has two hints, gentle first. After that you can reveal the answer: its route is drawn on the board and the blocks can be loaded into your program. Solving with the answer shown earns 1 star, and replaying on your own earns the full 3.
 - **Stars and par.** Solve a level in as few blocks as possible for three stars.

@@ -124,7 +124,7 @@
 
 @media (max-width: 860px) {
     .board {
-        --cell: min(56px, calc((100vw - 2.5rem) / var(--cols)), calc(30vh / var(--rows)), calc(30dvh / var(--rows)));
+        --cell: min(56px, calc((100vw - 2.5rem) / var(--cols)), calc(27vh / var(--rows)), calc(27dvh / var(--rows)));
         border-radius: 12px;
     }
 }

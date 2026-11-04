@@ -2,8 +2,11 @@ using WhatTheCode.Models;
 
 namespace WhatTheCode.Services
 {
-    /// <summary>A line of generated C#, tied back to the block that produced it.</summary>
-    public record CodeLine(string Text, Guid? SourceId = null);
+    /// <summary>
+    /// A line of generated C#, tied back to the block that produced it.
+    /// Braces, <c>else</c> and comments are not <see cref="IsStatement"/>, so they don't light up while running.
+    /// </summary>
+    public record CodeLine(string Text, Guid? SourceId = null, bool IsStatement = true);
 
     /// <summary>Turns the player's blocks into the equivalent real C# — the "code bridge".</summary>
     public static class CodeGenerator
@@ -48,7 +51,7 @@ namespace WhatTheCode.Services
                         WriteBlock(ins.Body, ins.Id, lines, depth, countedLoops, "nothing to do yet");
                         if (ins.ElseBody.Count > 0)
                         {
-                            lines.Add(new($"{pad}else", ins.Id));
+                            lines.Add(new($"{pad}else", ins.Id, IsStatement: false));
                             WriteBlock(ins.ElseBody, ins.Id, lines, depth, countedLoops, null);
                         }
                         break;
@@ -63,12 +66,12 @@ namespace WhatTheCode.Services
         private static void WriteBlock(List<Instruction> body, Guid owner, List<CodeLine> lines, int depth, int countedLoops, string? emptyComment)
         {
             var pad = new string(' ', depth * 4);
-            lines.Add(new($"{pad}{{", owner));
+            lines.Add(new($"{pad}{{", owner, IsStatement: false));
             if (body.Count == 0 && emptyComment is not null)
-                lines.Add(new($"{pad}    // {emptyComment}", owner));
+                lines.Add(new($"{pad}    // {emptyComment}", owner, IsStatement: false));
             else
                 Write(body, lines, depth + 1, countedLoops);
-            lines.Add(new($"{pad}}}", owner));
+            lines.Add(new($"{pad}}}", owner, IsStatement: false));
         }
 
         private static string ConditionMethod(Condition c) => c switch

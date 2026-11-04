@@ -84,7 +84,30 @@
 }
 
 .chip-btn:hover:not(:disabled), .condition-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .38); }
-.chip-btn:disabled, .condition-btn:disabled { opacity: .55; cursor: default; }
+.chip-btn:disabled { opacity: .55; cursor: default; }
+/* Keep the If's question readable while a program runs: that's when it matters most. */
+.condition-btn:disabled { opacity: 1; cursor: default; background: rgba(255, 255, 255, .18); }
+
+/* Live run info on a block: loop pass, or what an If just found. */
+.run-chip {
+    flex: none;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    font-size: .82rem;
+    font-weight: 600;
+    white-space: nowrap;
+    animation: chip-in 140ms ease-out;
+}
+
+.run-chip.yes { background: var(--success-soft); color: var(--go-shadow); }
+.run-chip.no  { background: var(--danger-soft); color: var(--danger-shadow); }
+
+@keyframes chip-in {
+    from { transform: scale(.8); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+}
 
 .well {
     margin: 0 8px 8px 18px;
@@ -132,10 +155,31 @@
 @media (max-width: 860px) {
     .chip-btn { width: 36px; height: 36px; }
     .condition-btn { padding: 9px 11px; }
-    .well { min-height: 52px; margin-left: 12px; }
+    /* Live run info on a block: loop pass, or what an If just found. */
+.run-chip {
+    flex: none;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--ink);
+    font-size: .82rem;
+    font-weight: 600;
+    white-space: nowrap;
+    animation: chip-in 140ms ease-out;
+}
+
+.run-chip.yes { background: var(--success-soft); color: var(--go-shadow); }
+.run-chip.no  { background: var(--danger-soft); color: var(--danger-shadow); }
+
+@keyframes chip-in {
+    from { transform: scale(.8); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+}
+
+.well { min-height: 52px; margin-left: 12px; }
     .else-label { margin-left: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .block.is-failed { animation: none; }
+    .block.is-failed, .run-chip { animation: none; }
 }

@@ -15,6 +15,7 @@ internal static class Play
 
         foreach (var step in runner.Run(program))
         {
+            if (!step.IsAction) continue;
             var outcome = session.Apply(step.Action);
             if (outcome is StepOutcome.HitWall or StepOutcome.HitEdge)
                 return RunResult.Crashed;

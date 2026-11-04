@@ -22,10 +22,22 @@
                                     @onclick:stopPropagation="true">+</button>
                             <span class="times">times</span>
                         </span>
+                        @if (PassOf(block) is { } pass)
+                        {
+                            <span class="run-chip" aria-label="Pass @pass of @block.Count">@pass of @block.Count</span>
+                        }
                         break;
 
                     case BlockKind.RepeatUntilFlag:
                         <span class="block-label">Repeat until <span aria-hidden="true">🚩</span><span class="visually-hidden">the flag</span></span>
+                        @if (AnswerFor(block) is { } atFlag)
+                        {
+                            <span class="run-chip @(atFlag ? "yes" : "no")">@(atFlag ? "✓ there" : "not yet")</span>
+                        }
+                        else if (PassOf(block) is { } untilPass)
+                        {
+                            <span class="run-chip" aria-label="Pass @untilPass">pass @untilPass</span>
+                        }
                         break;
 
                     case BlockKind.If:
@@ -38,6 +50,10 @@
                                     @onclick:stopPropagation="true">
                                 @block.ConditionLabel <span aria-hidden="true">⟳</span>
                             </button>
+                            @if (AnswerFor(block) is { } answer)
+                            {
+                                <span class="run-chip @(answer ? "yes" : "no")">@(answer ? "✓ yes" : "✗ no")</span>
+                            }
                         </span>
                         break;
 
@@ -72,6 +88,12 @@
     [Parameter] public Guid? ActiveId { get; set; }
     [Parameter] public Guid? FailedId { get; set; }
     [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>While running: which pass each loop is on.</summary>
+    [Parameter] public IReadOnlyDictionary<Guid, int>? Passes { get; set; }
+
+    /// <summary>While running: the If or Repeat-until that just checked the board, and its answer.</summary>
+    [Parameter] public (Guid Id, bool Answer)? Check { get; set; }
     [Parameter] public EventCallback<Instruction> OnRemove { get; set; }
     [Parameter] public EventCallback<List<Instruction>> OnSelectTarget { get; set; }
     [Parameter] public EventCallback<(Instruction Block, int Delta)> OnCountChange { get; set; }
@@ -80,7 +102,7 @@
     /// <summary>A drop area inside a container block. Tapping it makes new blocks go here.</summary>
     private RenderFragment Well(List<Instruction> list, string emptyHint)
     {
-        var isTarget = ReferenceEquals(Target, list);
+        var isTarget = !Disabled && ReferenceEquals(Target, list); // no drop target while a program runs
         return @<div class="well @(isTarget ? "is-target" : "")"
                      role="button" tabindex="0"
                      aria-pressed="@(isTarget ? "true" : "false")"
@@ -95,11 +117,18 @@
             else
             {
                 <BlockList Items="list" Target="Target" ActiveId="ActiveId" FailedId="FailedId" Disabled="Disabled"
+                           Passes="Passes" Check="Check"
                            OnRemove="OnRemove" OnSelectTarget="OnSelectTarget"
                            OnCountChange="OnCountChange" OnCycleCondition="OnCycleCondition" />
             }
         </div>;
     }
+
+    private int? PassOf(Instruction block) =>
+        Passes is not null && Passes.TryGetValue(block.Id, out var pass) ? pass : null;
+
+    private bool? AnswerFor(Instruction block) =>
+        Check is { } c && c.Id == block.Id ? c.Answer : null;
 
     private static string KindClass(BlockKind kind) => kind switch
     {

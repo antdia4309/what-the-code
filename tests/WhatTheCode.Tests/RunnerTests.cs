@@ -54,7 +54,64 @@ public class RunnerTests
             .Run(new[] { If(Condition.PathAhead, Do(Move()), Right()) })
             .ToList();
 
-        Assert.Single(steps);
-        Assert.Equal(BlockKind.TurnRight, steps[0].Action);
+        Assert.Equal(2, steps.Count);
+        Assert.Equal(StepKind.Check, steps[0].Kind);
+        Assert.False(steps[0].Answer);
+        Assert.Equal(BlockKind.TurnRight, steps[1].Action);
+    }
+
+    [Fact]
+    public void Repeat_until_reports_each_check_including_the_last()
+    {
+        var board = Board.FromMap(">.F");
+        var session = new GameSession(board);
+        var loop = Until(Move());
+        var checks = new List<bool>();
+
+        foreach (var step in new ProgramRunner(session).Run(new[] { loop }))
+        {
+            if (step.IsAction) session.Apply(step.Action);
+            else checks.Add(step.Answer);
+        }
+
+        Assert.Equal(new[] { false, false, true }, checks);
+    }
+
+    [Fact]
+    public void Loop_passes_count_up_and_clear_when_the_loop_ends()
+    {
+        var board = Board.FromMap(">..F");
+        var session = new GameSession(board);
+        var loop = Repeat(3, Move());
+        var runner = new ProgramRunner(session);
+        var seen = new List<int>();
+
+        foreach (var step in runner.Run(new[] { loop }))
+        {
+            seen.Add(runner.Passes[loop.Id]);
+            session.Apply(step.Action);
+        }
+
+        Assert.Equal(new[] { 1, 2, 3 }, seen);
+        Assert.False(runner.Passes.ContainsKey(loop.Id));
+    }
+
+    [Fact]
+    public void Inner_loop_restarts_its_count_on_each_outer_pass()
+    {
+        var board = Board.FromMap(">...", "....", "....", "...F");
+        var session = new GameSession(board);
+        var inner = Repeat(2, Left());
+        var outer = Repeat(2, inner);
+        var runner = new ProgramRunner(session);
+        var innerPasses = new List<int>();
+
+        foreach (var step in runner.Run(new[] { outer }))
+        {
+            innerPasses.Add(runner.Passes[inner.Id]);
+            session.Apply(step.Action);
+        }
+
+        Assert.Equal(new[] { 1, 2, 1, 2 }, innerPasses);
     }
 }

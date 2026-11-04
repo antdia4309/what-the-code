@@ -12,6 +12,7 @@ namespace WhatTheCode.Services
 
             foreach (var step in new ProgramRunner(session).Run(program))
             {
+                if (!step.IsAction) continue;
                 var outcome = session.Apply(step.Action);
                 if (outcome is StepOutcome.HitWall or StepOutcome.HitEdge) break;
                 cells.Add(new Cell(session.Bot.X, session.Bot.Y));

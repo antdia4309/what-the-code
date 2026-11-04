@@ -11,24 +11,28 @@ window.wtc = {
         strip.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
     },
 
-    // On phones the dock covers the bottom of the screen. After a block is added,
-    // scroll just enough that it sits between the pinned board and the dock.
-    revealBlock(id) {
+    // On phones the board is pinned at the top and the dock covers the bottom.
+    // Scroll just enough that an element sits in the window between them.
+    // maxHeight limits how much of a tall element (a loop with blocks inside) we insist on showing.
+    reveal(el, maxHeight) {
         const dock = document.querySelector('.dock');
-        if (!dock || getComputedStyle(dock).position !== 'fixed') return;
-        const block = document.querySelector(`[data-block="${id}"]`);
-        if (!block) return;
+        if (!el || !dock || getComputedStyle(dock).position !== 'fixed') return;
 
         const board = document.querySelector('.board-panel');
         const visibleTop = board ? board.getBoundingClientRect().bottom : 0;
         const visibleBottom = dock.getBoundingClientRect().top;
-        const r = block.getBoundingClientRect();
-        const wanted = r.top + Math.min(r.height, 150); // a new loop shows its drop area too
+        const r = el.getBoundingClientRect();
+        const wanted = r.top + Math.min(r.height, maxHeight);
 
         if (wanted > visibleBottom - 12) {
             window.scrollBy({ top: wanted - visibleBottom + 20, behavior: 'smooth' });
         } else if (r.top < visibleTop + 8) {
             window.scrollBy({ top: r.top - visibleTop - 16, behavior: 'smooth' });
         }
+    },
+
+    // After a block is added, or while stepping through a program.
+    revealBlock(id, maxHeight) {
+        this.reveal(document.querySelector(`[data-block="${id}"]`), maxHeight || 150);
     }
 };

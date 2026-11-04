@@ -31,6 +31,15 @@ public class CodeAndMapTests
     }
 
     [Fact]
+    public void Only_statement_lines_are_marked_for_highlighting()
+    {
+        var lines = CodeGenerator.Generate(new[] { Until(If(Condition.PathAhead, Do(Move()), Left())) });
+        var statements = lines.Where(l => l.IsStatement).Select(l => l.Text.Trim());
+
+        Assert.Equal(new[] { "while (!bot.AtFlag())", "if (bot.PathAhead())", "bot.MoveForward();", "bot.TurnLeft();" }, statements);
+    }
+
+    [Fact]
     public void Leaves_out_empty_else()
     {
         Assert.DoesNotContain("else", Code(If(Condition.PathLeft, Do(Left()))));

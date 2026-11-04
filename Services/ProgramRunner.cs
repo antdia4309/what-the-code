@@ -2,12 +2,30 @@ using WhatTheCode.Models;
 
 namespace WhatTheCode.Services
 {
-    /// <summary>One action the bot will take, plus the block that caused it (for highlighting).</summary>
-    public record ProgramStep(Instruction Source, BlockKind Action);
+    public enum StepKind
+    {
+        /// <summary>The bot moves or turns.</summary>
+        Action,
+
+        /// <summary>An If or Repeat-until looked at the board and got an answer. Nothing moves.</summary>
+        Check
+    }
 
     /// <summary>
-    /// Interprets a program one action at a time. Because If and Repeat-until look at the board,
-    /// the caller must apply each yielded step to the session before asking for the next one.
+    /// One thing that happens while a program runs, tied to the block that caused it.
+    /// Actions change the board; checks are shown so players can see why a branch was taken.
+    /// </summary>
+    public record ProgramStep(Instruction Source, StepKind Kind, BlockKind Action = default, bool Answer = false)
+    {
+        public bool IsAction => Kind == StepKind.Action;
+
+        public static ProgramStep Act(Instruction source) => new(source, StepKind.Action, source.Kind);
+        public static ProgramStep Checked(Instruction source, bool answer) => new(source, StepKind.Check, Answer: answer);
+    }
+
+    /// <summary>
+    /// Interprets a program one step at a time. Because If and Repeat-until look at the board,
+    /// the caller must apply each action to the session before asking for the next step.
     /// </summary>
     public class ProgramRunner
     {
@@ -18,6 +36,7 @@ namespace WhatTheCode.Services
         public const int MaxTicks = 2000;
 
         private readonly GameSession _session;
+        private readonly Dictionary<Guid, int> _passes = new();
         private int _actions;
         private int _ticks;
 
@@ -26,10 +45,16 @@ namespace WhatTheCode.Services
         /// <summary>True if the run stopped because it hit <see cref="MaxActions"/> or <see cref="MaxTicks"/>.</summary>
         public bool RanOutOfSteps { get; private set; }
 
+        /// <summary>
+        /// Which pass each running loop is on (1 = first time through). A loop is only listed while it's running.
+        /// </summary>
+        public IReadOnlyDictionary<Guid, int> Passes => _passes;
+
         public IEnumerable<ProgramStep> Run(IReadOnlyList<Instruction> program)
         {
             _actions = 0;
             _ticks = 0;
+            _passes.Clear();
             RanOutOfSteps = false;
             return Execute(program);
         }
@@ -43,21 +68,34 @@ namespace WhatTheCode.Services
                 switch (instruction.Kind)
                 {
                     case BlockKind.Repeat:
-                        for (int i = 0; i < instruction.Count && Tick(); i++)
+                        for (int pass = 1; pass <= instruction.Count && Tick(); pass++)
+                        {
+                            _passes[instruction.Id] = pass;
                             foreach (var step in Execute(instruction.Body))
                                 yield return step;
+                        }
+                        _passes.Remove(instruction.Id);
                         break;
 
                     case BlockKind.RepeatUntilFlag:
-                        while (!_session.OnFlag && Tick())
+                        for (int pass = 1; Tick(); pass++)
+                        {
+                            var atFlag = _session.OnFlag;
+                            yield return ProgramStep.Checked(instruction, atFlag);
+                            if (atFlag) break;
+
+                            _passes[instruction.Id] = pass;
                             foreach (var step in Execute(instruction.Body))
                                 yield return step;
+                        }
+                        _passes.Remove(instruction.Id);
                         break;
 
                     case BlockKind.If:
                         if (!Tick()) yield break;
-                        var branch = _session.Check(instruction.Condition) ? instruction.Body : instruction.ElseBody;
-                        foreach (var step in Execute(branch))
+                        var answer = _session.Check(instruction.Condition);
+                        yield return ProgramStep.Checked(instruction, answer);
+                        foreach (var step in Execute(answer ? instruction.Body : instruction.ElseBody))
                             yield return step;
                         break;
 
@@ -67,7 +105,7 @@ namespace WhatTheCode.Services
                             RanOutOfSteps = true;
                             yield break;
                         }
-                        yield return new ProgramStep(instruction, instruction.Kind);
+                        yield return ProgramStep.Act(instruction);
                         break;
                 }
             }
