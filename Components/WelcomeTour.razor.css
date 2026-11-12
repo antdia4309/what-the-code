@@ -1,0 +1,68 @@
+.tour { position: fixed; inset: 0; z-index: 60; }
+
+/* Blocks the page while the tour is up; only the card is clickable. */
+.tour-catch { position: absolute; inset: 0; }
+
+/* A see-through hole over the target. The huge shadow dims everything else. */
+.tour-spot {
+    position: fixed;
+    display: none;
+    border-radius: 14px;
+    box-shadow: 0 0 0 3px var(--highlight), 0 0 0 9999px var(--scrim);
+    pointer-events: none;
+    transition: top 220ms ease, left 220ms ease, width 220ms ease, height 220ms ease;
+}
+
+.tour-card {
+    position: fixed;
+    top: 0;
+    left: 0;
+    visibility: hidden; /* shown once js/app.js has placed it */
+    padding: .9rem 1rem 1rem;
+    border-radius: 16px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    box-shadow: 0 16px 40px rgb(var(--shadow-rgb) / .35);
+    transition: top 220ms ease, left 220ms ease;
+}
+
+.tour-count {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: .82rem;
+    font-weight: 700;
+}
+
+.tour-title {
+    margin: .1rem 0 .3rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.25rem;
+}
+
+.tour-text { margin: 0; line-height: 1.45; }
+
+.tour-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: .5rem;
+    margin-top: .85rem;
+}
+
+.tour-skip, .tour-next {
+    border: 0;
+    border-radius: 10px;
+    padding: .55rem 1rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.tour-skip { background: transparent; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.tour-next { background: var(--go); color: var(--on-color); box-shadow: 0 3px 0 var(--go-shadow); padding-inline: 1.3rem; }
+
+@media (prefers-reduced-motion: reduce) {
+    .tour-spot, .tour-card { transition: none; }
+}

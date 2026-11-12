@@ -13,7 +13,7 @@ namespace WhatTheCode.Models
         public required string Tip { get; init; }
 
         /// <summary>Shown when a level introduces a new block or idea.</summary>
-        public string? NewIdea { get; init; }
+        public Concept? Concept { get; init; }
 
         /// <summary>
         /// The boards this level is played on. With more than one, a single program

@@ -29,8 +29,8 @@ Most coding education tools pick a lane — either too simple for adults or too 
 | 5 | Debugging tools — pause, step, speed, visible decisions, loop counters | ✅ Complete |
 | 6 | Pro mode — type real C# instead of blocks, with beginner-friendly errors | ✅ Complete |
 | 7 | Level editor with share links, and badges | ✅ Complete |
-| 8 | First-run experience, concept cards, dark mode | 🔲 Next |
-| 9 | Anonymous play stats, "share my solution", install as an app | 🔲 Planned |
+| 8 | First-run welcome, concept cards, dark mode, accessible colors | ✅ Complete |
+| 9 | Anonymous play stats, "share my solution", install as an app | 🔲 Next |
 | 10–15 | Functions, Part 3 levels, daily puzzle, Python, JavaScript, gems & variables, level packs | 🔲 Planned |
 
 See **[ROADMAP.md](ROADMAP.md)** for who the game is for, the principles behind it, and what "done" means for each session.
@@ -46,6 +46,8 @@ See **[ROADMAP.md](ROADMAP.md)** for who the game is for, the principles behind 
 | Sequences & loops | 1–6 | Step order, turning, planning around walls, Repeat, patterns, nested loops |
 | Decisions | 7–12 | If/Otherwise, Repeat until flag, nested ifs, minimal programs, wall-following mazes |
 
+- **A quick welcome.** First-time players get three skippable steps that point at the real board, blocks and Run button. It can be replayed from ⚙️ Settings.
+- **Concept cards.** When a level introduces an idea, a card names it in one sentence. "Tell me more" adds why it matters, where it shows up in real life (recipes, assembly lines, thermostats, robot vacuums), and a small C# example.
 - **Build, then run.** Stack blocks into a program, press Run, and watch the bot follow it step by step.
 - **Blocks:** Move forward, Turn left, Turn right, Repeat, Repeat until flag, and If (path ahead / left / right) with an Otherwise branch. Blocks nest up to three deep.
 - **One program, many boards.** Later levels have several boards, so counting steps stops working and the program has to make real decisions.
@@ -59,6 +61,7 @@ See **[ROADMAP.md](ROADMAP.md)** for who the game is for, the principles behind 
 - **Stars and par.** Solve a level in as few blocks as possible for three stars.
 - **Saved progress.** Best stars are kept in the browser, and levels unlock in order.
 - **Made for phones too.** On small screens the board stays pinned at the top, blocks and Run sit in a dock at your thumb, and new blocks scroll into view as you add them. Tapping the board explains that the bot follows your program.
+- **Light and dark.** Follows your device by default, or pick one in ⚙️ Settings. Text meets WCAG AA contrast in both themes.
 
 ---
 
@@ -71,14 +74,18 @@ what-the-code/
 │   ├── Pages/Make.razor        # Level editor
 │   ├── GameGrid.razor          # Board: walls, flag, trail, animated bot
 │   ├── BlockList.razor         # Recursive program editor (loops, If/Otherwise)
+│   ├── ConceptCard.razor       # "New idea" card with Tell me more
+│   ├── WelcomeTour.razor       # First-run tour (spotlights real elements)
+│   ├── SettingsMenu.razor      # Theme choice, replay the tour
 │   ├── App.razor               # Router
 │   └── Layout/MainLayout.razor
 ├── Models/
 │   ├── Board.cs                # One playfield; built from a text map
 │   ├── Character.cs            # Position, direction, movement
+│   ├── Concept.cs              # The idea a level introduces, for its concept card
 │   ├── Grid.cs                 # Size, walls, visited trail
 │   ├── Instruction.cs          # A block in the player's program
-│   └── Level.cs                # Boards, par, available blocks
+│   └── Level.cs                # Boards, par, available blocks, concept
 ├── Services/
 │   ├── LevelCatalog.cs         # All levels: text maps, hints, and solutions
 │   ├── ProgramBuilder.cs       # Shorthand for writing solutions in code
@@ -104,6 +111,8 @@ Levels are text maps in `Services/LevelCatalog.cs`:
 ```
 .  open floor     #  wall     F  flag     > < ^ v  bot start and facing
 ```
+
+If the level introduces a new block or idea, give it a `Concept` too. The tests require one wherever a block first appears, and check that its C# example parses and only uses blocks the player has already met.
 
 Each level also needs two `Hints` and a `Solution` (built with the helpers in `Services/ProgramBuilder.cs`). The solution is what players see when they ask for the answer, and the tests check that it reaches the flag on every board at exactly par, using only the blocks the level offers. Run `dotnet test tests/WhatTheCode.Tests` before pushing.
 

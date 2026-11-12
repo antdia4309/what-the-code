@@ -16,7 +16,7 @@
     border-radius: 10px;
     background: var(--block);
     box-shadow: 0 3px 0 var(--block-shadow);
-    color: #fff;
+    color: var(--on-color);
     transition: outline-color 120ms ease;
     outline: 3px solid transparent;
     outline-offset: 2px;
@@ -80,21 +80,22 @@
 
 .condition-btn {
     padding: 5px 9px;
-    background: rgba(255, 255, 255, .26);
+    background: rgb(0 0 0 / .2);
 }
 
-.chip-btn:hover:not(:disabled), .condition-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .38); }
+.chip-btn:hover:not(:disabled) { background: rgba(255, 255, 255, .38); }
+.condition-btn:hover:not(:disabled) { background: rgb(0 0 0 / .3); }
 .chip-btn:disabled { opacity: .55; cursor: default; }
 /* Keep the If's question readable while a program runs: that's when it matters most. */
-.condition-btn:disabled { opacity: 1; cursor: default; background: rgba(255, 255, 255, .18); }
+.condition-btn:disabled { opacity: 1; cursor: default; background: rgb(0 0 0 / .15); }
 
 /* Live run info on a block: loop pass, or what an If just found. */
 .run-chip {
     flex: none;
     padding: 3px 8px;
     border-radius: 999px;
-    background: #fff;
-    color: var(--ink);
+    background: var(--chip-bg);
+    color: var(--chip-ink);
     font-size: .82rem;
     font-weight: 600;
     white-space: nowrap;
@@ -160,8 +161,8 @@
     flex: none;
     padding: 3px 8px;
     border-radius: 999px;
-    background: #fff;
-    color: var(--ink);
+    background: var(--chip-bg);
+    color: var(--chip-ink);
     font-size: .82rem;
     font-weight: 600;
     white-space: nowrap;

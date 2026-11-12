@@ -1,5 +1,44 @@
 // Small browser helpers called from Blazor.
 window.wtc = {
+    // ---------- Theme ----------
+    // Choice is 'system' (follow the device), 'light' or 'dark'. index.html applies it before first paint.
+    theme: {
+        key: 'whatthecode.theme',
+        colors: { light: '#EAF1F8', dark: '#0F1726' },
+
+        get() {
+            let choice = null;
+            try { choice = localStorage.getItem(this.key); } catch { }
+            return choice === 'light' || choice === 'dark' ? choice : 'system';
+        },
+
+        set(choice) {
+            try {
+                if (choice === 'light' || choice === 'dark') localStorage.setItem(this.key, choice);
+                else localStorage.removeItem(this.key);
+            } catch { }
+            this.apply();
+        },
+
+        apply() {
+            const choice = this.get();
+            const dark = choice === 'dark' ||
+                (choice === 'system' && !!window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+            const resolved = dark ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', resolved);
+            const meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', this.colors[resolved]);
+        },
+
+        init() {
+            this.apply();
+            // Follow the device when it switches (for example, at sunset) unless the player picked one.
+            if (window.matchMedia) {
+                matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => this.apply());
+            }
+        }
+    },
+
     // On phones the level strip scrolls sideways; keep the current level in view.
     showCurrentLevel() {
         const strip = document.querySelector('.level-path');
@@ -132,6 +171,87 @@ window.wtc = {
         this.reveal(document.querySelector(selector), 40);
     },
 
+    // ---------- Welcome tour ----------
+    // Puts a spotlight over a real element on the page and the tour card beside it.
+    tour: {
+        selector: null,
+        pending: 0,
+
+        place(selector) {
+            const first = this.selector === null;
+            this.selector = selector;
+            if (first) {
+                this._onChange = () => {
+                    cancelAnimationFrame(this.pending);
+                    this.pending = requestAnimationFrame(() => this._position());
+                };
+                window.addEventListener('resize', this._onChange);
+                window.addEventListener('scroll', this._onChange, true);
+            }
+
+            const el = document.querySelector(selector);
+            // On desktop the target can be below the fold; phones pin the board and the dock in view.
+            if (el) {
+                const r = el.getBoundingClientRect();
+                if (r.top < 0 || r.bottom > window.innerHeight) el.scrollIntoView({ block: 'center' });
+            }
+            this._position();
+        },
+
+        stop() {
+            if (this._onChange) {
+                window.removeEventListener('resize', this._onChange);
+                window.removeEventListener('scroll', this._onChange, true);
+            }
+            cancelAnimationFrame(this.pending);
+            this.selector = null;
+            this._onChange = null;
+        },
+
+        _position() {
+            const spot = document.getElementById('tour-spot');
+            const card = document.getElementById('tour-card');
+            if (!spot || !card) return;
+
+            const vw = document.documentElement.clientWidth;
+            const vh = window.innerHeight;
+            const gap = 12, pad = 6, edge = 12;
+            const width = Math.min(360, vw - edge * 2);
+            card.style.width = width + 'px';
+            const h = card.offsetHeight;
+
+            const el = this.selector && document.querySelector(this.selector);
+            if (!el) {
+                spot.style.display = 'none';
+                card.style.left = (vw - width) / 2 + 'px';
+                card.style.top = Math.max(edge, (vh - h) / 2) + 'px';
+                card.style.visibility = 'visible';
+                return;
+            }
+
+            const r = el.getBoundingClientRect();
+            spot.style.display = 'block';
+            spot.style.top = (r.top - pad) + 'px';
+            spot.style.left = (r.left - pad) + 'px';
+            spot.style.width = (r.width + pad * 2) + 'px';
+            spot.style.height = (r.height + pad * 2) + 'px';
+
+            // Beside the target on wide screens, else below, else above, else wherever it covers the least.
+            const clampTop = t => Math.min(vh - h - edge, Math.max(edge, t));
+            let top, left = Math.min(vw - width - edge, Math.max(edge, r.left + r.width / 2 - width / 2));
+            if (vw >= 900 && r.right + pad + gap + width <= vw - edge) {
+                left = r.right + pad + gap;
+                top = clampTop(r.top + r.height / 2 - h / 2);
+            }
+            else if (r.bottom + pad + gap + h <= vh - edge) top = r.bottom + pad + gap;
+            else if (r.top - pad - gap - h >= edge) top = r.top - pad - gap - h;
+            else top = clampTop(r.bottom - h);
+            card.style.top = top + 'px';
+            card.style.left = left + 'px';
+            card.style.visibility = 'visible';
+        }
+    },
+
     // ---------- Sharing ----------
 
     async copy(text) {
@@ -155,3 +275,5 @@ window.wtc = {
         if (el) el.select();
     }
 };
+
+wtc.theme.init();

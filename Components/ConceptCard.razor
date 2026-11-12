@@ -1,0 +1,39 @@
+@using WhatTheCode.Models
+
+@* The one-line idea is always visible; the rest waits behind "Tell me more". *@
+<aside class="concept" aria-label="New idea: @Concept.Name">
+    <p class="concept-head">
+        <span class="concept-tag">New idea</span>
+        <strong class="concept-name">@Concept.Name</strong>
+    </p>
+    <p class="concept-line">@Concept.Line</p>
+
+    <button type="button" class="concept-toggle" aria-expanded="@(_open ? "true" : "false")" aria-controls="concept-more"
+            @onclick="() => _open = !_open">
+        @(_open ? "Show less" : "Tell me more")
+    </button>
+
+    @if (_open)
+    {
+        <div id="concept-more" class="concept-more">
+            <p>@Concept.More</p>
+            <p class="concept-real"><strong>In the real world.</strong> @Concept.RealWorld</p>
+            <p class="concept-code-label">What it looks like in C#</p>
+            <pre class="concept-code"><code>@Concept.Code</code></pre>
+        </div>
+    }
+</aside>
+
+@code {
+    [Parameter, EditorRequired] public Concept Concept { get; set; } = default!;
+
+    private bool _open;
+    private Concept? _shown;
+
+    // Start closed whenever a different level's idea comes in.
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_shown, Concept)) _open = false;
+        _shown = Concept;
+    }
+}

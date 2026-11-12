@@ -1,0 +1,91 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@* Three quick steps for first-time players, pointing at the real board, blocks and Run button. *@
+<div class="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title" aria-describedby="tour-text" @onkeydown="OnKey">
+    <div class="tour-catch"></div>
+    <div id="tour-spot" class="tour-spot" aria-hidden="true"></div>
+
+    <div id="tour-card" class="tour-card">
+        <p class="tour-count">@(_step + 1) of @Steps.Count</p>
+        <h2 id="tour-title" class="tour-title">@Current.Title</h2>
+        <p id="tour-text" class="tour-text">@Current.Text</p>
+        <div class="tour-actions">
+            @if (!IsLast)
+            {
+                <button type="button" class="tour-skip" @onclick="FinishAsync">Skip</button>
+            }
+            else if (_step > 0)
+            {
+                <button type="button" class="tour-skip" @onclick="() => GoTo(_step - 1)">Back</button>
+            }
+            <button type="button" class="tour-next" @onclick="NextAsync">@(IsLast ? "Let's go" : "Next")</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>The snippet palette replaces blocks in Code mode, so step two talks about snippets.</summary>
+    [Parameter] public bool CodeMode { get; set; }
+
+    /// <summary>Called when the player finishes or skips.</summary>
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private record Step(string Selector, string Title, string Text);
+
+    private IReadOnlyList<Step> Steps => new[]
+    {
+        new Step(".board", "Meet the bot",
+            "Every level, the goal is the same: get the bot to the 🚩. It only moves when your program tells it to."),
+        CodeMode
+            ? new Step(".palette", "Write a program",
+                "A program is a list of instructions. Tap a snippet to drop a line of C# into your program, or type it yourself.")
+            : new Step(".palette", "Build a program",
+                "A program is a list of instructions. Each block is one instruction. Tap a block to add it to your program."),
+        new Step(".run-controls", "Run it",
+            "Press Run and the bot follows your program from the top. If something goes wrong, the step that caused it lights up so you can fix it."),
+    };
+
+    private int _step;
+    private int _placed = -1;
+    private Step Current => Steps[_step];
+    private bool IsLast => _step == Steps.Count - 1;
+
+    private void GoTo(int step) => _step = step;
+
+    private async Task NextAsync()
+    {
+        if (IsLast) await FinishAsync();
+        else _step++;
+    }
+
+    private async Task FinishAsync()
+    {
+        try { await JS.InvokeVoidAsync("wtc.tour.stop"); } catch (JSException) { }
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") await FinishAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_placed == _step) return;
+        _placed = _step;
+        try
+        {
+            await JS.InvokeVoidAsync("wtc.tour.place", Current.Selector);
+            await JS.InvokeVoidAsync("wtc.focus", ".tour-next");
+        }
+        catch (JSException) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("wtc.tour.stop"); }
+        catch (JSException) { }
+        catch (JSDisconnectedException) { }
+    }
+}

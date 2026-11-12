@@ -32,7 +32,7 @@ These hold for every session:
 
 The goal: a complete beginner gets from "what is this?" to solving Level 3 without help, and we can *see* whether that's happening.
 
-### Session 8 · First-run experience and dark mode
+### Session 8 · First-run experience and dark mode ✅
 
 - A short, skippable welcome on first visit: three steps (this is the bot, these are blocks, press Run), each one shown on the real screen rather than on a separate page.
 - **Concept cards.** When a level introduces something new, a card explains it in one sentence, with "Tell me more" for a short paragraph and a real-world example (loops → assembly lines; if/else → a thermostat; wall-following → robot vacuums and maze-solving).
@@ -40,10 +40,12 @@ The goal: a complete beginner gets from "what is this?" to solving Level 3 witho
 - **Dark mode.** It follows the phone/computer setting by default, with a manual toggle.
 
 **Done when**
-- [ ] A first-time visitor sees the welcome once; returning players never do; it can be skipped and replayed from a menu.
-- [ ] Every level that introduces a concept has a card with a "Tell me more" and a real-world example.
-- [ ] Dark mode passes contrast checks (WCAG AA) on every screen, including the editor and code view.
-- [ ] Tested on phone and desktop, in both light and dark.
+- [x] A first-time visitor sees the welcome once; returning players never do; it can be skipped and replayed from a menu.
+- [x] Every level that introduces a concept has a card with a "Tell me more" and a real-world example.
+- [x] Dark mode passes contrast checks (WCAG AA) on every screen, including the editor and code view.
+- [x] Tested on phone and desktop, in both light and dark.
+
+**What shipped:** the tour, concept cards on levels 1, 2, 4, 6, 7, 8, 9 and 11, and a Device / Light / Dark setting. An axe check of 12 screens and states in each theme, on phone and desktop, found the original block and button colors were also below AA with white text, in light mode too (orange was 2.7:1). They were darkened just enough to pass, so the game now meets AA in both themes.
 
 ### Session 9 · Measure and share
 

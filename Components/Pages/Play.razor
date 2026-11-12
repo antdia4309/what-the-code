@@ -43,6 +43,7 @@
             <a class="top-btn" href="make" aria-label="Make your own level">
                 <span aria-hidden="true">🛠️</span><span class="top-btn-text wide-only">Make</span>
             </a>
+            <SettingsMenu OnHowToPlay="StartTour" Disabled="_running" />
         </div>
     </header>
 
@@ -58,9 +59,9 @@
                 @_level.Title
             </h2>
 
-            @if (_level.NewIdea is not null)
+            @if (_level.Concept is not null)
             {
-                <p class="new-idea"><strong>New idea.</strong> @_level.NewIdea</p>
+                <ConceptCard Concept="_level.Concept" />
             }
         </section>
 
@@ -352,6 +353,11 @@
         </div>
     }
 
+    @if (_showTour)
+    {
+        <WelcomeTour CodeMode="_mode == EditMode.Code" OnClose="EndTourAsync" />
+    }
+
     @if (_showBadges)
     {
         <div class="overlay" @onclick="() => _showBadges = false" @onkeydown="CabinetKey">
@@ -389,6 +395,7 @@
     private record LineNoteInfo(string Text, string Css);
 
     private const string ModeKey = "whatthecode.mode";
+    private const string WelcomedKey = "whatthecode.welcomed";
 
     private const int BetweenBoardsMs = 650;
     private const int MaxNesting = 3;
@@ -452,6 +459,9 @@
     private bool _usedStep;
     private int _failedRuns;
 
+    // First-run welcome tour (also replayable from Settings).
+    private bool _showTour;
+
     // Pro mode: the program as typed C#.
     private EditMode _mode = EditMode.Blocks;
     private string _codeText = "";
@@ -505,6 +515,7 @@
                 var resumeAt = LevelCatalog.All.FirstOrDefault(l => !Progress.IsSolved(l.Number)) ?? LevelCatalog.All[^1];
                 LoadLevel(resumeAt);
             }
+            await MaybeWelcomeAsync();
             StateHasChanged();
             return;
         }
@@ -548,6 +559,43 @@
         {
             // Scrolling helpers are cosmetic; never let them break the game.
         }
+    }
+
+    /// <summary>
+    /// Shows the welcome tour once, to people who have never played. Anyone with progress
+    /// from before the tour existed is treated as already welcomed.
+    /// </summary>
+    private async Task MaybeWelcomeAsync()
+    {
+        if (_testing) return;
+        try
+        {
+            if (await JS.InvokeAsync<string?>("localStorage.getItem", WelcomedKey) == "1") return;
+            if (LevelCatalog.All.Any(l => Progress.IsSolved(l.Number)))
+                await MarkWelcomedAsync();
+            else
+                _showTour = true;
+        }
+        catch (JSException) { /* no storage: skip the tour rather than show it every visit */ }
+    }
+
+    private void StartTour()
+    {
+        if (_running) return;
+        _nudge = false;
+        _showTour = true;
+    }
+
+    private async Task EndTourAsync()
+    {
+        _showTour = false;
+        await MarkWelcomedAsync();
+    }
+
+    private async Task MarkWelcomedAsync()
+    {
+        try { await JS.InvokeVoidAsync("localStorage.setItem", WelcomedKey, "1"); }
+        catch (JSException) { }
     }
 
     /// <summary>Someone tapped the board expecting it to move the bot. Point them at the blocks instead.</summary>
@@ -752,7 +800,7 @@
                         {
                             Fail(board, step.Source.Id, prefix + (outcome == StepOutcome.HitWall
                                 ? "Bonk! The highlighted block drove the bot into a wall."
-                                : "Whoa, the highlighted block tried to drive off the edge of the board."));
+                                : "The highlighted block tried to drive the bot off the edge of the board."));
                             return;
                         }
                     }

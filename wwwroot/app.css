@@ -19,16 +19,16 @@
     --bot-ring-shadow: #A9BCD3;
 
     /* Blocks: one colour per kind of instruction */
-    --move: #2F7DE1;
+    --move: #2072DC;
     --move-shadow: #1F5CAB;
-    --turn: #E9821F;
-    --turn-shadow: #B05F10;
-    --loop: #8657F0;
+    --turn: #B0600E;
+    --turn-shadow: #7A410A;
+    --loop: #8455F0;
     --loop-shadow: #5F37B8;
     --loop-well: #EDE5FF;
     --loop-well-target: #F8F4FF;
     --loop-ink: #4C2CA0;
-    --decide: #D1437F;
+    --decide: #CF3B79;
     --decide-shadow: #9A2B5B;
     --decide-well: #FCE6EF;
     --decide-well-target: #FFF5F9;
@@ -36,19 +36,89 @@
 
     /* Feedback */
     --highlight: #FFD45C;
-    --go: #2E9C77;
-    --go-shadow: #1D6E53;
-    --danger: #E04A5F;
+    --go: #268263;
+    --go-shadow: #185641;
+    --danger: #DC3048;
     --danger-shadow: #A93142;
     --danger-soft: #FDECEE;
     --success-soft: #E5F6EF;
     --star: #E9A100;
     --code-ink: #DDE7F5;
 
+    /* Roles. Use these instead of reusing --ink as a background, so dark mode can flip them. */
+    --surface: #FFFFFF;          /* inputs and small cards on the paper */
+    --strong: #1C2B45;           /* emphasised fills: current level, toggles, toasts */
+    --on-strong: #FFFFFF;        /* text on --strong */
+    --strong-shadow: #0E1828;
+    --strong-accent: #FFD45C;    /* yellow text on --strong */
+    --on-color: #FFFFFF;         /* text on coloured blocks and buttons, same in both themes */
+    --on-highlight: #1C2B45;     /* text on yellow highlights, same in both themes */
+    --chip-bg: #FFFFFF;
+    --chip-ink: #1C2B45;
+    --code-bg: #1C2B45;
+    --logo-chip: #1C2B45;
+    --code-muted: #8597B5;
+    --code-yes: #7EE2B8;
+    --code-no: #FF9AA8;
+    --code-pass: #C9B6FF;
+    --shadow-rgb: 28 43 69;
+    --scrim: rgb(28 43 69 / .45);
+    --hover-tint: rgb(255 255 255 / .45);
+
+    color-scheme: light;
+
     /* Type */
     --font-display: "Fredoka", "Trebuchet MS", sans-serif;
     --font-body: "Nunito", "Segoe UI", sans-serif;
     --font-code: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+}
+
+/* Dark theme. html[data-theme] is set before first paint by the script in index.html,
+   from the saved choice or, by default, the device setting. */
+:root[data-theme="dark"] {
+    --paper: #0F1726;
+    --paper-raised: #182338;
+    --ink: #E3EAF4;
+    --ink-soft: #A4B2C8;
+
+    --mat: #1A263B;
+    --mat-edge: #2C3B57;
+    --mat-line: #33435F;
+    --wall: #6A7DA0;
+    --wall-mortar: #55678A;
+    --trail: #44AE8A;
+    --trail-strong: #5CCBA4;
+    --flag-tile: #FFD45C;
+    --flag-tile-soft: #352E19;
+    --bot-ring: #F2F6FB;
+    --bot-ring-shadow: #070C16;
+
+    --loop-well: #251E42;
+    --loop-well-target: #30285A;
+    --loop-ink: #CDBBFF;
+    --decide-well: #3A1A2B;
+    --decide-well-target: #4A2338;
+    --decide-ink: #FFA3C8;
+
+    --danger-soft: #3A1A22;
+    --success-soft: #12322A;
+    --star: #FFC233;
+
+    --surface: #1E2A41;
+    --strong: #E3EAF4;
+    --on-strong: #0F1726;
+    --strong-shadow: #8293B0;
+    --strong-accent: #8A5A00;
+    --chip-bg: #EEF3F9;
+    --chip-ink: #142036;
+    --code-bg: #090E19;
+    --logo-chip: #2A3A5A;
+    --code-muted: #7F90AE;
+    --shadow-rgb: 0 0 0;
+    --scrim: rgb(3 6 12 / .7);
+    --hover-tint: rgb(255 255 255 / .1);
+
+    color-scheme: dark;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -121,7 +191,7 @@ h1:focus { outline: none; }
     background: var(--flag-tile-soft);
     color: var(--ink);
     bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 -1px 2px rgb(var(--shadow-rgb) / .2);
     display: none;
     left: 0;
     padding: 0.6rem 1.25rem 0.7rem 1.25rem;
@@ -136,3 +206,27 @@ h1:focus { outline: none; }
         right: 0.75rem;
         top: 0.5rem;
     }
+
+/* Buttons in the top bar (play page and the settings menu). */
+.top-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 46px;
+    padding: 0 .75rem;
+    border-radius: 12px;
+    border: 2px solid var(--mat-line);
+    background: var(--paper-raised);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: .95rem;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.top-btn:hover { border-color: var(--ink-soft); }
+
+@media (max-width: 860px) {
+    .top-btn { height: 40px; padding: 0 .6rem; border-radius: 10px; font-size: .88rem; }
+}

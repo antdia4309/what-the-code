@@ -47,7 +47,7 @@
     touch-action: manipulation;
 }
 
-.tool.is-on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.tool.is-on { background: var(--strong); border-color: var(--strong); color: var(--on-strong); }
 
 .tool-tip { margin: .6rem 0 .9rem; color: var(--ink-soft); font-size: .92rem; }
 
@@ -79,7 +79,7 @@
     touch-action: manipulation;
 }
 
-.paint-cell:hover { background: rgba(255, 255, 255, .45); }
+.paint-cell:hover { background: var(--hover-tint); }
 .paint-cell:focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
 
 .paint-cell.wall {
@@ -100,7 +100,7 @@
     width: 72%;
     height: 72%;
     border-radius: 50%;
-    background: #fff;
+    background: var(--bot-ring);
     box-shadow: 0 3px 0 var(--bot-ring-shadow);
     font-size: calc(var(--cell) * .38);
 }
@@ -112,7 +112,7 @@
     transform: translateY(-50%);
     border-top: 7px solid transparent;
     border-bottom: 7px solid transparent;
-    border-left: 10px solid #fff;
+    border-left: 10px solid var(--bot-ring);
 }
 
 /* Rotate the pointer around the bot, keep the face upright. */
@@ -187,10 +187,10 @@
     cursor: pointer;
 }
 
-.toggle-turn { --c: var(--turn-shadow); }
+.toggle-turn { --c: var(--turn); }
 .toggle-loop { --c: var(--loop); }
 .toggle-if   { --c: var(--decide); }
-.block-toggle.is-on { background: var(--c); color: #fff; }
+.block-toggle.is-on { background: var(--c); color: var(--on-color); }
 
 .field-help { margin: .2rem 0 0; font-size: .88rem; color: var(--ink-soft); line-height: 1.4; }
 
@@ -214,7 +214,7 @@
     cursor: pointer;
 }
 
-.btn-run { background: var(--go); color: #fff; box-shadow: 0 3px 0 var(--go-shadow); padding-inline: 1.6rem; }
+.btn-run { background: var(--go); color: var(--on-color); box-shadow: 0 3px 0 var(--go-shadow); padding-inline: 1.6rem; }
 .btn-quiet { background: transparent; color: var(--ink); border: 2px solid var(--mat-line); }
 
 .how-it-works {

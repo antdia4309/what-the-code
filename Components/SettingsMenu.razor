@@ -1,0 +1,83 @@
+@inject IJSRuntime JS
+
+@* Small menu in the top bar: light/dark theme, and a way to replay the welcome tour. *@
+<div class="settings">
+    <button type="button" class="top-btn settings-btn" aria-label="Settings" aria-haspopup="true"
+            aria-expanded="@(_open ? "true" : "false")" aria-controls="settings-panel" @onclick="Toggle">
+        <span aria-hidden="true">⚙️</span>
+    </button>
+
+    @if (_open)
+    {
+        <div class="settings-catch" @onclick="Close"></div>
+        <div id="settings-panel" class="settings-panel" @onkeydown="OnKey">
+            <p class="settings-label" id="theme-label">Theme</p>
+            <div class="theme-choice" role="radiogroup" aria-labelledby="theme-label">
+                @foreach (var (value, label) in Choices)
+                {
+                    var v = value;
+                    <button type="button" role="radio" aria-checked="@(_theme == v ? "true" : "false")"
+                            class="@(_theme == v ? "is-on" : "")" @onclick="() => SetThemeAsync(v)">@label</button>
+                }
+            </div>
+            <p class="settings-note">Device follows your phone or computer's light or dark setting.</p>
+
+            <button type="button" class="settings-item" disabled="@Disabled" @onclick="HowToPlayAsync">
+                <span aria-hidden="true">👋</span> How to play
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Replays the welcome tour.</summary>
+    [Parameter] public EventCallback OnHowToPlay { get; set; }
+
+    /// <summary>The tour can't run while the bot is moving.</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    private static readonly (string Value, string Label)[] Choices =
+        { ("system", "Device"), ("light", "Light"), ("dark", "Dark") };
+
+    private bool _open;
+    private bool _focusPanel;
+    private string _theme = "system";
+
+    private async Task Toggle()
+    {
+        _open = !_open;
+        if (_open)
+        {
+            try { _theme = await JS.InvokeAsync<string>("wtc.theme.get"); } catch (JSException) { }
+            _focusPanel = true;
+        }
+    }
+
+    private void Close() => _open = false;
+
+    private async Task SetThemeAsync(string value)
+    {
+        _theme = value;
+        try { await JS.InvokeVoidAsync("wtc.theme.set", value); } catch (JSException) { }
+    }
+
+    private async Task HowToPlayAsync()
+    {
+        _open = false;
+        await OnHowToPlay.InvokeAsync();
+    }
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        if (e.Key != "Escape") return;
+        _open = false;
+        try { await JS.InvokeVoidAsync("wtc.focus", ".settings-btn"); } catch (JSException) { }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusPanel) return;
+        _focusPanel = false;
+        try { await JS.InvokeVoidAsync("wtc.focus", ".theme-choice .is-on"); } catch (JSException) { }
+    }
+}
