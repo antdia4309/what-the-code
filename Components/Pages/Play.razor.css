@@ -592,30 +592,7 @@
     margin-top: -.5rem;
 }
 
-.btn {
-    border: 0;
-    border-radius: 10px;
-    padding: .65rem 1.1rem;
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: 1rem;
-    cursor: pointer;
-}
-
-.btn:disabled { opacity: .45; cursor: default; }
-
-.btn-run, .btn-next {
-    background: var(--go);
-    color: var(--on-color);
-    box-shadow: 0 3px 0 var(--go-shadow);
-    padding-inline: 1.6rem;
-}
-
 .btn-next { margin-top: .6rem; }
-
-.btn-stop { background: var(--danger); color: var(--on-color); box-shadow: 0 3px 0 var(--danger-shadow); }
-
-.btn-pause { background: var(--strong); color: var(--on-strong); box-shadow: 0 3px 0 var(--strong-shadow); padding-inline: 1.3rem; }
 
 .btn-speed { min-width: 50px; padding-inline: .7rem; font-size: 1.1rem; }
 
@@ -632,23 +609,6 @@
     font-size: .78rem;
     font-weight: 600;
     letter-spacing: .02em;
-}
-
-.btn-quiet {
-    background: transparent;
-    color: var(--ink);
-    border: 2px solid var(--mat-line);
-}
-
-.btn-small {
-    padding: .45rem .9rem;
-    font-size: .95rem;
-}
-
-.btn-reveal {
-    background: var(--decide);
-    color: var(--on-color);
-    box-shadow: 0 3px 0 var(--decide-shadow);
 }
 
 .bridge .code {

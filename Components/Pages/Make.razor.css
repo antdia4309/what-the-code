@@ -204,19 +204,6 @@
 
 .make-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
-.btn {
-    border: 0;
-    border-radius: 10px;
-    padding: .7rem 1.2rem;
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: 1rem;
-    cursor: pointer;
-}
-
-.btn-run { background: var(--go); color: var(--on-color); box-shadow: 0 3px 0 var(--go-shadow); padding-inline: 1.6rem; }
-.btn-quiet { background: transparent; color: var(--ink); border: 2px solid var(--mat-line); }
-
 .how-it-works {
     margin: 0;
     padding-left: 1.2rem;

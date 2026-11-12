@@ -24,7 +24,6 @@ namespace WhatTheCode.Models
         public Instruction(BlockKind kind) => Kind = kind;
 
         public bool IsContainer => Kind is BlockKind.Repeat or BlockKind.RepeatUntilFlag or BlockKind.If;
-        public bool IsLoop => Kind is BlockKind.Repeat or BlockKind.RepeatUntilFlag;
 
         /// <summary>The child lists this block owns (empty for simple blocks).</summary>
         public IEnumerable<List<Instruction>> ChildLists

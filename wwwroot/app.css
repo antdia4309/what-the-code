@@ -146,16 +146,6 @@ a:focus-visible {
 
 h1:focus { outline: none; }
 
-.blazor-error-boundary {
-    background: var(--danger);
-    padding: 1rem 1.25rem;
-    color: white;
-}
-
-    .blazor-error-boundary::after {
-        content: "Something broke. Reload the page to keep playing.";
-    }
-
 /* ---------- Loading screen (shown until WebAssembly starts) ---------- */
 
 .boot {
@@ -229,4 +219,45 @@ h1:focus { outline: none; }
 
 @media (max-width: 860px) {
     .top-btn { height: 40px; padding: 0 .6rem; border-radius: 10px; font-size: .88rem; }
+}
+
+/* Buttons shared by the game and the level editor. Page-specific tweaks stay in each page's CSS. */
+.btn {
+    border: 0;
+    border-radius: 10px;
+    padding: .65rem 1.1rem;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.btn:disabled { opacity: .45; cursor: default; }
+
+.btn-run, .btn-next {
+    background: var(--go);
+    color: var(--on-color);
+    box-shadow: 0 3px 0 var(--go-shadow);
+    padding-inline: 1.6rem;
+}
+
+.btn-stop { background: var(--danger); color: var(--on-color); box-shadow: 0 3px 0 var(--danger-shadow); }
+
+.btn-pause { background: var(--strong); color: var(--on-strong); box-shadow: 0 3px 0 var(--strong-shadow); padding-inline: 1.3rem; }
+
+.btn-quiet {
+    background: transparent;
+    color: var(--ink);
+    border: 2px solid var(--mat-line);
+}
+
+.btn-small {
+    padding: .45rem .9rem;
+    font-size: .95rem;
+}
+
+.btn-reveal {
+    background: var(--decide);
+    color: var(--on-color);
+    box-shadow: 0 3px 0 var(--decide-shadow);
 }

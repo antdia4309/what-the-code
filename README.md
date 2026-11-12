@@ -2,19 +2,17 @@
 
 **▶ Play it: [antdia4309.github.io/what-the-code](https://antdia4309.github.io/what-the-code/)**
 
-A dual-layer, age-adaptive coding education game built with **C# + Blazor**. Designed to teach programming logic to anyone — from a 6-year-old dragging blocks to a 40-year-old reading real syntax.
+A free puzzle game that teaches programming to people who have never coded. You program a bot to reach the flag, watch it run, and see the real C# behind your program light up line by line. Built with **C# and Blazor WebAssembly**, it runs entirely in the browser, on phones too.
 
 ---
 
 ## 🧠 The Concept
 
-Most coding education tools pick a lane — either too simple for adults or too intimidating for kids. **What the CODE?** bridges that gap with a progressive interface that evolves as the user's brain levels up.
+Most beginner coding tools are made for kids, and most "real" tutorials open with a wall of syntax. **What the CODE?** sits in between. It's for curious beginners, roughly 16–30, who have never written code: high school and college students, and early-career people wondering whether tech is for them.
 
-| Junior Mode | Pro Mode |
-|---|---|
-| Large buttons, visual blocks | Full code editor, dark mode |
-| Audio cues, mascot guidance | Syntax highlighting, debugging |
-| Block-based logic | Real C# / text-based code |
+- **Blocks first, real code always in view.** Every program you build is shown as real C#, and you can switch to typing it yourself whenever you're ready.
+- **One new idea per level.** Each idea gets a one-line card. "Tell me more" connects it to something real, like assembly lines, thermostats or robot vacuums.
+- **Mistakes are part of the lesson.** When a program fails, the game shows exactly which step caused it, and you can step through it one block at a time.
 
 ---
 
@@ -155,22 +153,9 @@ Every push to `main` runs the tests. If they pass, the site is published to GitH
 
 ---
 
-## 🔭 What's Scope (and What's Not)
+## 🔭 Scope
 
-### ✅ In Scope
-- Progressive block-to-text interface
-- Visual feedback sandbox
-- Age-adaptive UI (Junior / Pro toggle)
-- Gamification (badges, streaks, skill tree)
-- Accessibility (text-to-speech, high contrast)
-
-### 🚫 Out of Scope (for now)
-- Real-time multiplayer co-coding
-- AI-powered tutoring
-- Native desktop apps
-- Hardware integration (Arduino, LEGO Mindstorms)
-- Global ranked leaderboards
-- Multi-language voiceovers
+What's coming next, and what's deliberately left out, is in **[ROADMAP.md](ROADMAP.md)**. In short: the game stays free, runs in the browser with no account or server, and grows one concept at a time (functions next, then Python and JavaScript).
 
 ---
 
@@ -182,7 +167,7 @@ This project is in active early development. If you'd like to contribute, open a
 
 ## 📄 License
 
-MIT
+MIT. See [LICENSE](LICENSE).
 
 ---
 
