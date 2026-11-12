@@ -17,7 +17,9 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Pinned rather than ubuntu-latest: the browser checks need an OS Playwright
+    # supports, and ubuntu-latest moved to 26.04 before Playwright did.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
