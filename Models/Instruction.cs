@@ -35,6 +35,18 @@ namespace WhatTheCode.Models
             }
         }
 
+        /// <summary>Finds a block by id anywhere in a program, including inside loops and ifs.</summary>
+        public static Instruction? Find(IEnumerable<Instruction> program, Guid id)
+        {
+            foreach (var block in program)
+            {
+                if (block.Id == id) return block;
+                foreach (var child in block.ChildLists)
+                    if (Find(child, id) is { } found) return found;
+            }
+            return null;
+        }
+
         public void ChangeCount(int delta) =>
             Count = Math.Clamp(Count + delta, MinRepeat, MaxRepeat);
 

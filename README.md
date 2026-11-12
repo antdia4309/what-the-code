@@ -28,6 +28,7 @@ Most beginner coding tools are made for kids, and most "real" tutorials open wit
 | 6 | Pro mode — type real C# instead of blocks, with beginner-friendly errors | ✅ Complete |
 | 7 | Level editor with share links, and badges | ✅ Complete |
 | 8 | First-run welcome, concept cards, dark mode, accessible colors | ✅ Complete |
+| 8.5 | Tidy-up: editor and badge components, browser checks in CI | ✅ Complete |
 | 9 | Anonymous play stats, "share my solution", install as an app | 🔲 Next |
 | 10–15 | Functions, Part 3 levels, daily puzzle, Python, JavaScript, gems & variables, level packs | 🔲 Planned |
 
@@ -72,6 +73,8 @@ what-the-code/
 │   ├── Pages/Make.razor        # Level editor
 │   ├── GameGrid.razor          # Board: walls, flag, trail, animated bot
 │   ├── BlockList.razor         # Recursive program editor (loops, If/Otherwise)
+│   ├── CodeEditor.razor        # Code mode: typed C#, line numbers, run notes
+│   ├── BadgeCabinet.razor      # Badge list dialog
 │   ├── ConceptCard.razor       # "New idea" card with Tell me more
 │   ├── WelcomeTour.razor       # First-run tour (spotlights real elements)
 │   ├── SettingsMenu.razor      # Theme choice, replay the tour
@@ -91,11 +94,13 @@ what-the-code/
 │   ├── GameSession.cs          # Applies one action; answers If checks
 │   ├── ProgramRunner.cs        # Interprets the program one action at a time
 │   ├── CodeGenerator.cs        # Blocks → real C# (the "code bridge")
+│   ├── CodeSnippets.cs         # What each snippet button inserts in Code mode
 │   ├── CodeParser.cs           # Typed C# → blocks, with beginner-friendly errors
 │   ├── CustomLevels.cs         # Player-made levels: share-link encoding and checks
 │   ├── Badges.cs               # Badge catalog and storage
 │   └── ProgressStore.cs        # Best stars per level (browser localStorage)
-├── tests/WhatTheCode.Tests/    # xUnit tests
+├── tests/WhatTheCode.Tests/    # xUnit tests for the game logic
+├── tests/browser/              # Browser checks: tour, themes, gameplay, colour contrast
 ├── wwwroot/                    # index.html, styles, static assets
 └── .github/workflows/deploy.yml
 ```
@@ -147,9 +152,21 @@ Then open `http://localhost:5290`. In Codespaces, use the link in the **Ports** 
 dotnet test tests/WhatTheCode.Tests
 ```
 
+The browser checks play the published site in Chromium: the welcome tour, light and dark themes, a few full levels, and a WCAG AA colour-contrast audit of every screen in both themes, on desktop and phone. To run them yourself (Codespaces works):
+
+```bash
+pip install -r tests/browser/requirements.txt
+python -m playwright install --with-deps chromium
+dotnet publish WhatTheCode.csproj -c Release -o release
+mkdir -p site && cp -r release/wwwroot site/what-the-code
+sed -i 's|<base href="/" />|<base href="/what-the-code/" />|' site/what-the-code/index.html
+python -m http.server 8080 --directory site &
+python tests/browser/check_site.py
+```
+
 ### Deployment
 
-Every push to `main` runs the tests. If they pass, the site is published to GitHub Pages. A failing test blocks the deploy, so a broken level never goes live.
+Every push to `main` runs the unit tests and the browser checks. If they all pass, the site is published to GitHub Pages. A failure blocks the deploy, so a broken level, a broken theme or unreadable text never goes live.
 
 ---
 

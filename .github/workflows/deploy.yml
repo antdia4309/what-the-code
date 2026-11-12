@@ -40,6 +40,20 @@ jobs:
           # Stop Jekyll from hiding the _framework folder.
           touch release/wwwroot/.nojekyll
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Browser checks (welcome tour, themes, gameplay, colour contrast)
+        run: |
+          pip install -r tests/browser/requirements.txt
+          python -m playwright install --with-deps chromium
+          # Serve the site exactly as GitHub Pages will, under /what-the-code/.
+          mkdir -p site && cp -r release/wwwroot site/what-the-code
+          python -m http.server 8080 --directory site > /dev/null 2>&1 &
+          sleep 2
+          python tests/browser/check_site.py
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: release/wwwroot

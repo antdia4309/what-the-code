@@ -1,0 +1,44 @@
+@inject BadgeStore Badges
+@inject IJSRuntime JS
+
+@* Every badge, earned or not, with how to earn it. Escape, the ✕ or a click outside closes it. *@
+<div class="overlay" @onclick="CloseAsync" @onkeydown="OnKey">
+    <div class="cabinet" role="dialog" aria-modal="true" aria-labelledby="cabinet-title" @onclick:stopPropagation="true">
+        <div class="cabinet-head">
+            <h2 id="cabinet-title">Badges <span class="cabinet-count">@Badges.Count of @BadgeCatalog.All.Count</span></h2>
+            <button type="button" class="chip-close cabinet-close" aria-label="Close" @onclick="CloseAsync">✕</button>
+        </div>
+        <ul class="badge-list">
+            @foreach (var badge in BadgeCatalog.All)
+            {
+                var earned = Badges.Has(badge.Id);
+                <li class="badge @(earned ? "is-earned" : "")">
+                    <span class="badge-emoji" aria-hidden="true">@(earned ? badge.Emoji : "🔒")</span>
+                    <span class="badge-text">
+                        <strong>@badge.Name</strong>
+                        <span>@badge.HowToEarn</span>
+                    </span>
+                    <span class="visually-hidden">@(earned ? "Earned" : "Not earned yet")</span>
+                </li>
+            }
+        </ul>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Move keyboard focus into the dialog when it opens.
+        if (!firstRender) return;
+        try { await JS.InvokeVoidAsync("wtc.focus", ".cabinet-close"); } catch (JSException) { }
+    }
+
+    private Task CloseAsync() => OnClose.InvokeAsync();
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") await CloseAsync();
+    }
+}

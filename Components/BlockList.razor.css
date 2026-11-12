@@ -102,8 +102,8 @@
     animation: chip-in 140ms ease-out;
 }
 
-.run-chip.yes { background: var(--success-soft); color: var(--go-shadow); }
-.run-chip.no  { background: var(--danger-soft); color: var(--danger-shadow); }
+.run-chip.yes { background: var(--success-soft); color: var(--success-text); }
+.run-chip.no  { background: var(--danger-soft); color: var(--danger-text); }
 
 @keyframes chip-in {
     from { transform: scale(.8); opacity: 0; }
@@ -138,15 +138,6 @@
     font-weight: 500;
 }
 
-.visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-}
-
 @keyframes wobble {
     0%, 100% { transform: translateX(0); }
     30% { transform: translateX(-4px); }
@@ -156,28 +147,7 @@
 @media (max-width: 860px) {
     .chip-btn { width: 36px; height: 36px; }
     .condition-btn { padding: 9px 11px; }
-    /* Live run info on a block: loop pass, or what an If just found. */
-.run-chip {
-    flex: none;
-    padding: 3px 8px;
-    border-radius: 999px;
-    background: var(--chip-bg);
-    color: var(--chip-ink);
-    font-size: .82rem;
-    font-weight: 600;
-    white-space: nowrap;
-    animation: chip-in 140ms ease-out;
-}
-
-.run-chip.yes { background: var(--success-soft); color: var(--go-shadow); }
-.run-chip.no  { background: var(--danger-soft); color: var(--danger-shadow); }
-
-@keyframes chip-in {
-    from { transform: scale(.8); opacity: 0; }
-    to   { transform: scale(1); opacity: 1; }
-}
-
-.well { min-height: 52px; margin-left: 12px; }
+    .well { min-height: 52px; margin-left: 12px; }
     .else-label { margin-left: 12px; }
 }
 

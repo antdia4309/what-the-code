@@ -47,6 +47,12 @@ The goal: a complete beginner gets from "what is this?" to solving Level 3 witho
 
 **What shipped:** the tour, concept cards on levels 1, 2, 4, 6, 7, 8, 9 and 11, and a Device / Light / Dark setting. An axe check of 12 screens and states in each theme, on phone and desktop, found the original block and button colors were also below AA with white text, in light mode too (orange was 2.7:1). They were darkened just enough to pass, so the game now meets AA in both themes.
 
+### Session 8.5 · Tidy-up ✅
+
+- Split the two most self-contained parts out of the play page: the Code-mode editor and the badge cabinet.
+- Browser checks now run in GitHub Actions on every push: the welcome tour, themes, a few full plays, and the contrast audit, now including the If yes/no chips and code-error notes.
+- They caught two dark-mode text colours the Session 8 audit hadn't reached, and a bug the split introduced before it shipped.
+
 ### Session 9 · Measure and share
 
 - **Anonymous play stats.** These would be privacy-friendly (no cookies, no personal data), using a service like GoatCounter or Plausible. Events: level started, solved, abandoned; hints used; Blocks vs Code; Step used; links shared. A short privacy note in the footer.

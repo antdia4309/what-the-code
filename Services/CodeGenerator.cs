@@ -13,6 +13,10 @@ namespace WhatTheCode.Services
     {
         private static readonly string[] LoopVariables = { "i", "j", "k", "m" };
 
+        /// <summary>The whole program as one block of C# text, or "" for an empty program.</summary>
+        public static string ToText(IReadOnlyList<Instruction> program) =>
+            program.Count == 0 ? "" : string.Join("\n", Generate(program).Select(l => l.Text));
+
         public static List<CodeLine> Generate(IReadOnlyList<Instruction> program)
         {
             var lines = new List<CodeLine>();

@@ -1,0 +1,109 @@
+@inject IJSRuntime JS
+
+@* Code mode: the typed C# program. While a run is going it becomes read-only and annotated
+   (the running line, what each if found, which pass each loop is on).
+   Parsing lives in Play, because the text is what decides the player's program. *@
+<div class="editor @(Error is not null ? "has-error" : "")">
+    <div class="gutter" aria-hidden="true">
+        @for (int n = 1; n <= LineCount; n++)
+        {
+            <span class="@GutterClass(n)">@n</span>
+        }
+    </div>
+    @if (Running)
+    {
+        <pre class="editor-view" aria-label="Your program in C#, running">@for (int n = 1; n <= TextLines.Length; n++)
+{var lineNo = n;<span class="editor-line @LineState(lineNo)">@TextLines[lineNo - 1]@if (LineNote(lineNo) is { } note){<span class="line-note @note.Css">@note.Text</span>}
+</span>}</pre>
+    }
+    else
+    {
+        <textarea id="@EditorId" class="editor-input" rows="@LineCount"
+                  spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"
+                  aria-label="Your program in C#" aria-describedby="code-help"
+                  placeholder="// Type C# here, or tap a snippet."
+                  value="@Text" @oninput="e => OnInput.InvokeAsync(e.Value?.ToString() ?? string.Empty)"></textarea>
+    }
+</div>
+
+@if (Error is not null)
+{
+    <p class="code-error" role="alert"><strong>Line @Error.Line:</strong> @Error.Message</p>
+}
+@if (SwitchBlocked)
+{
+    <p class="code-error-note">Fix that first, then switch to blocks. Your blocks have to match your code.</p>
+}
+<p id="code-help" class="code-help">Snippets drop in at your cursor. Tab indents, Enter keeps your indentation.</p>
+
+@code {
+    /// <summary>The textarea's id. js/app.js uses it to insert snippets and handle Tab and Enter.</summary>
+    public const string EditorId = "code-editor";
+
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public CodeError? Error { get; set; }
+
+    /// <summary>Which line each block came from, so a running block can light up its line.</summary>
+    [Parameter] public IReadOnlyDictionary<Guid, int> Lines { get; set; } = new Dictionary<Guid, int>();
+    [Parameter] public IReadOnlyList<Instruction> Program { get; set; } = Array.Empty<Instruction>();
+
+    [Parameter] public bool Running { get; set; }
+    [Parameter] public Guid? ActiveId { get; set; }
+    [Parameter] public Guid? FailedId { get; set; }
+
+    /// <summary>The block that just checked the board, and its answer.</summary>
+    [Parameter] public (Guid Id, bool Answer)? Check { get; set; }
+
+    /// <summary>Which pass each running loop is on.</summary>
+    [Parameter] public IReadOnlyDictionary<Guid, int>? Passes { get; set; }
+
+    /// <summary>The player tried to switch to Blocks with broken code.</summary>
+    [Parameter] public bool SwitchBlocked { get; set; }
+
+    [Parameter] public EventCallback<string> OnInput { get; set; }
+
+    private record LineNoteInfo(string Text, string Css);
+
+    private string[] TextLines => Text.Replace("\r", "").Split('\n');
+    private int LineCount => Math.Max(6, TextLines.Length + 1);
+
+    // The textarea is re-created after every run, so hook up the editing keys whenever it's showing.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Running) return;
+        try { await JS.InvokeVoidAsync("wtc.enhanceEditor", EditorId); }
+        catch (JSException) { /* plain textarea still works */ }
+    }
+
+    private int? LineOf(Guid? id) => id is { } g && Lines.TryGetValue(g, out var line) ? line : null;
+
+    private string GutterClass(int line) =>
+        Error?.Line == line ? "is-error"
+        : Running && LineOf(ActiveId) == line ? "is-active"
+        : LineOf(FailedId) == line ? "is-failed"
+        : "";
+
+    private string LineState(int line) =>
+        LineOf(ActiveId) == line ? "is-active"
+        : LineOf(FailedId) == line ? "is-failed"
+        : "";
+
+    /// <summary>While running: what an if just found, or which pass a loop is on, shown at the end of its line.</summary>
+    private LineNoteInfo? LineNote(int line)
+    {
+        if (Check is { } c && LineOf(c.Id) == line && Instruction.Find(Program, c.Id) is { } checkedBlock)
+        {
+            return checkedBlock.Kind == BlockKind.RepeatUntilFlag
+                ? new(c.Answer ? "  // ✓ there" : "  // not yet", c.Answer ? "yes" : "no")
+                : new(c.Answer ? "  // ✓ yes" : "  // ✗ no", c.Answer ? "yes" : "no");
+        }
+
+        if (Passes is null) return null;
+        foreach (var (id, pass) in Passes)
+        {
+            if (LineOf(id) != line || Instruction.Find(Program, id) is not { } loop) continue;
+            return new(loop.Kind == BlockKind.Repeat ? $"  // {pass} of {loop.Count}" : $"  // pass {pass}", "pass");
+        }
+        return null;
+    }
+}

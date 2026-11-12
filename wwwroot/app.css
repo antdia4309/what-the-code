@@ -41,7 +41,9 @@
     --danger: #DC3048;
     --danger-shadow: #A93142;
     --danger-soft: #FDECEE;
+    --danger-text: #A93142;      /* red text on the paper */
     --success-soft: #E5F6EF;
+    --success-text: #185641;     /* green text on the paper */
     --star: #E9A100;
     --code-ink: #DDE7F5;
 
@@ -101,7 +103,9 @@
     --decide-ink: #FFA3C8;
 
     --danger-soft: #3A1A22;
+    --danger-text: #FF8E9E;
     --success-soft: #12322A;
+    --success-text: #6FE0B4;
     --star: #FFC233;
 
     --surface: #1E2A41;
@@ -260,4 +264,14 @@ h1:focus { outline: none; }
     background: var(--decide);
     color: var(--on-color);
     box-shadow: 0 3px 0 var(--decide-shadow);
+}
+
+/* Text for screen readers only. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
 }

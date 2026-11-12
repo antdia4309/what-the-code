@@ -37,7 +37,7 @@
         </nav>
 
         <div class="top-actions">
-            <button type="button" class="top-btn" @onclick="() => _showBadges = true" aria-label="Badges: @Badges.Count of @BadgeCatalog.All.Count earned">
+            <button type="button" class="top-btn badges-btn" @onclick="() => _showBadges = true" aria-label="Badges: @Badges.Count of @BadgeCatalog.All.Count earned">
                 <span aria-hidden="true">🏅</span><span class="top-btn-text">@Badges.Count/@BadgeCatalog.All.Count</span>
             </button>
             <a class="top-btn" href="make" aria-label="Make your own level">
@@ -202,7 +202,7 @@
                                         disabled="@_running"
                                         title="Insert at the cursor"
                                         @onclick="() => InsertSnippetAsync(k)">
-                                    @SnippetLabel(k)
+                                    @CodeSnippets.Label(k)
                                 </button>
                             }
                             else
@@ -262,38 +262,9 @@
 
                 @if (_mode == EditMode.Code)
                 {
-                    <div class="editor @(_codeError is not null ? "has-error" : "")">
-                        <div class="gutter" aria-hidden="true">
-                            @for (int n = 1; n <= EditorLineCount; n++)
-                            {
-                                <span class="@GutterClass(n)">@n</span>
-                            }
-                        </div>
-                        @if (_running)
-                        {
-                            <pre class="editor-view" aria-label="Your program in C#, running">@for (int n = 1; n <= CodeTextLines.Length; n++)
-{var lineNo = n;<span class="editor-line @LineState(lineNo)">@CodeTextLines[lineNo - 1]@if (LineNote(lineNo) is { } note){<span class="line-note @note.Css">@note.Text</span>}
-</span>}</pre>
-                        }
-                        else
-                        {
-                            <textarea id="code-editor" class="editor-input" rows="@EditorLineCount"
-                                      spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"
-                                      aria-label="Your program in C#" aria-describedby="code-help"
-                                      placeholder="@CodePlaceholder"
-                                      value="@_codeText" @oninput="OnCodeInput"></textarea>
-                        }
-                    </div>
-
-                    @if (_codeError is not null)
-                    {
-                        <p class="code-error" role="alert"><strong>Line @_codeError.Line:</strong> @_codeError.Message</p>
-                    }
-                    @if (_switchBlocked)
-                    {
-                        <p class="code-error-note">Fix that first, then switch to blocks. Your blocks have to match your code.</p>
-                    }
-                    <p id="code-help" class="code-help">Snippets drop in at your cursor. Tab indents, Enter keeps your indentation.</p>
+                    <CodeEditor Text="@_codeText" Error="_codeError" Lines="_codeLines" Program="_program"
+                                Running="_running" ActiveId="_activeId" FailedId="_failedId" Check="_check" Passes="_passes"
+                                SwitchBlocked="_switchBlocked" OnInput="ApplyCode" />
                 }
                 else
                 {
@@ -360,28 +331,7 @@
 
     @if (_showBadges)
     {
-        <div class="overlay" @onclick="() => _showBadges = false" @onkeydown="CabinetKey">
-            <div class="cabinet" role="dialog" aria-modal="true" aria-labelledby="cabinet-title" @onclick:stopPropagation="true">
-                <div class="cabinet-head">
-                    <h2 id="cabinet-title">Badges <span class="cabinet-count">@Badges.Count of @BadgeCatalog.All.Count</span></h2>
-                    <button type="button" class="chip-close cabinet-close" aria-label="Close" @onclick="() => _showBadges = false">✕</button>
-                </div>
-                <ul class="badge-list">
-                    @foreach (var badge in BadgeCatalog.All)
-                    {
-                        var earned = Badges.Has(badge.Id);
-                        <li class="badge @(earned ? "is-earned" : "")">
-                            <span class="badge-emoji" aria-hidden="true">@(earned ? badge.Emoji : "🔒")</span>
-                            <span class="badge-text">
-                                <strong>@badge.Name</strong>
-                                <span>@badge.HowToEarn</span>
-                            </span>
-                            <span class="visually-hidden">@(earned ? "Earned" : "Not earned yet")</span>
-                        </li>
-                    }
-                </ul>
-            </div>
-        </div>
+        <BadgeCabinet OnClose="CloseBadgesAsync" />
     }
 </div>
 
@@ -392,7 +342,6 @@
 
     private enum Speed { Slow, Normal, Fast }
     private enum EditMode { Blocks, Code }
-    private record LineNoteInfo(string Text, string Css);
 
     private const string ModeKey = "whatthecode.mode";
     private const string WelcomedKey = "whatthecode.welcomed";
@@ -453,7 +402,6 @@
     private bool _copied;
     private string? _customProblem;
     private bool _showBadges;
-    private bool _cabinetWasOpen;
     private List<Badge>? _toast;
     private CancellationTokenSource? _toastCts;
     private bool _usedStep;
@@ -470,9 +418,6 @@
     private bool _switchBlocked;
 
     private bool CanRun => _program.Count > 0 && (_mode == EditMode.Blocks || _codeError is null);
-    private string[] CodeTextLines => _codeText.Replace("\r", "").Split('\n');
-    private int EditorLineCount => Math.Max(6, CodeTextLines.Length + 1);
-    private const string CodePlaceholder = "// Type C# here, or tap a snippet.";
 
     private int StepDelayMs => _speed switch { Speed.Slow => 800, Speed.Fast => 140, _ => 380 };
     private int CheckDelayMs => _speed switch { Speed.Slow => 650, Speed.Fast => 90, _ => 260 };
@@ -543,16 +488,6 @@
                     await JS.InvokeVoidAsync("wtc.revealSelector", ".editor-line.is-active");
                 else
                     await JS.InvokeVoidAsync("wtc.revealBlock", focus.ToString(), 56);
-            }
-
-            if (_mode == EditMode.Code && !_running)
-                await JS.InvokeVoidAsync("wtc.enhanceEditor", "code-editor");
-
-            // Move keyboard focus into the badge cabinet when it opens.
-            if (_showBadges != _cabinetWasOpen)
-            {
-                _cabinetWasOpen = _showBadges;
-                if (_showBadges) await JS.InvokeVoidAsync("wtc.focus", ".cabinet-close");
             }
         }
         catch (JSException)
@@ -671,7 +606,7 @@
         if (_running) return;
         if (_mode == EditMode.Code)
         {
-            ApplyCode(TextOf(_level.Solution()));
+            ApplyCode(CodeGenerator.ToText(_level.Solution()));
             return;
         }
         _program = _level.Solution();
@@ -1024,9 +959,11 @@
         catch (OperationCanceledException) { }
     }
 
-    private void CabinetKey(KeyboardEventArgs e)
+    /// <summary>Closes the badge cabinet and puts keyboard focus back on the button that opened it.</summary>
+    private async Task CloseBadgesAsync()
     {
-        if (e.Key == "Escape") _showBadges = false;
+        _showBadges = false;
+        try { await JS.InvokeVoidAsync("wtc.focus", ".badges-btn"); } catch (JSException) { }
     }
 
     private async Task CopyShareLinkAsync()
@@ -1064,7 +1001,7 @@
         if (mode == EditMode.Code)
         {
             _mode = EditMode.Code;
-            ApplyCode(TextOf(_program)); // your blocks, written out as C#
+            ApplyCode(CodeGenerator.ToText(_program)); // your blocks, written out as C#
         }
         else
         {
@@ -1082,8 +1019,6 @@
         try { await JS.InvokeVoidAsync("localStorage.setItem", ModeKey, mode.ToString()); }
         catch (JSException) { /* preference just won't stick */ }
     }
-
-    private void OnCodeInput(ChangeEventArgs e) => ApplyCode(e.Value?.ToString() ?? "");
 
     /// <summary>Reads the typed code. If it's valid for this level, it becomes the program.</summary>
     private void ApplyCode(string text)
@@ -1108,76 +1043,8 @@
     private async Task InsertSnippetAsync(BlockKind kind)
     {
         if (_running) return;
-        try { await JS.InvokeVoidAsync("wtc.insertSnippet", "code-editor", SnippetFor(kind)); }
-        catch (JSException) { ApplyCode(_codeText + (_codeText.Length > 0 ? "\n" : "") + SnippetFor(kind).Replace("$0", "")); }
-    }
-
-    private static string TextOf(IReadOnlyList<Instruction> program) =>
-        program.Count == 0 ? "" : string.Join("\n", CodeGenerator.Generate(program).Select(l => l.Text));
-
-    private static string SnippetFor(BlockKind kind) => kind switch
-    {
-        BlockKind.MoveForward     => "bot.MoveForward();$0",
-        BlockKind.TurnLeft        => "bot.TurnLeft();$0",
-        BlockKind.TurnRight       => "bot.TurnRight();$0",
-        BlockKind.Repeat          => "for (int i = 0; i < 3; i++)\n{\n    $0\n}",
-        BlockKind.RepeatUntilFlag => "while (!bot.AtFlag())\n{\n    $0\n}",
-        BlockKind.If              => "if (bot.PathAhead())\n{\n    $0\n}\nelse\n{\n    \n}",
-        _                         => ""
-    };
-
-    private static string SnippetLabel(BlockKind kind) => kind switch
-    {
-        BlockKind.MoveForward     => "MoveForward();",
-        BlockKind.TurnLeft        => "TurnLeft();",
-        BlockKind.TurnRight       => "TurnRight();",
-        BlockKind.Repeat          => "for loop",
-        BlockKind.RepeatUntilFlag => "while loop",
-        BlockKind.If              => "if / else",
-        _                         => kind.ToString()
-    };
-
-    private int? LineOf(Guid? id) => id is { } g && _codeLines.TryGetValue(g, out var line) ? line : null;
-
-    private string GutterClass(int line) =>
-        _codeError?.Line == line ? "is-error"
-        : _running && LineOf(_activeId) == line ? "is-active"
-        : LineOf(_failedId) == line ? "is-failed"
-        : "";
-
-    private string LineState(int line) =>
-        LineOf(_activeId) == line ? "is-active"
-        : LineOf(_failedId) == line ? "is-failed"
-        : "";
-
-    /// <summary>While running: what an if just found, or which pass a loop is on, shown at the end of its line.</summary>
-    private LineNoteInfo? LineNote(int line)
-    {
-        if (_check is { } c && LineOf(c.Id) == line && FindBlock(_program, c.Id) is { } checkedBlock)
-        {
-            return checkedBlock.Kind == BlockKind.RepeatUntilFlag
-                ? new(c.Answer ? "  // ✓ there" : "  // not yet", c.Answer ? "yes" : "no")
-                : new(c.Answer ? "  // ✓ yes" : "  // ✗ no", c.Answer ? "yes" : "no");
-        }
-
-        if (_passes is null) return null;
-        foreach (var (id, pass) in _passes)
-        {
-            if (LineOf(id) != line || FindBlock(_program, id) is not { } loop) continue;
-            return new(loop.Kind == BlockKind.Repeat ? $"  // {pass} of {loop.Count}" : $"  // pass {pass}", "pass");
-        }
-        return null;
-    }
-
-    private static Instruction? FindBlock(IEnumerable<Instruction> list, Guid id)
-    {
-        foreach (var b in list)
-        {
-            if (b.Id == id) return b;
-            foreach (var child in b.ChildLists)
-                if (FindBlock(child, id) is { } found) return found;
-        }
-        return null;
+        try { await JS.InvokeVoidAsync("wtc.insertSnippet", CodeEditor.EditorId, CodeSnippets.Insert(kind)); }
+        catch (JSException) { ApplyCode(_codeText + (_codeText.Length > 0 ? "\n" : "") + CodeSnippets.Insert(kind).Replace(CodeSnippets.Cursor, "")); }
     }
 
     private void ClearRunState()

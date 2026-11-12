@@ -138,71 +138,6 @@
     to   { opacity: 1; transform: translate(-50%, 0) scale(1); }
 }
 
-/* Badge cabinet */
-.overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 40;
-    display: grid;
-    place-items: center;
-    padding: 1rem;
-    background: var(--scrim);
-}
-
-.cabinet {
-    width: min(520px, 100%);
-    max-height: calc(100dvh - 2rem);
-    overflow-y: auto;
-    padding: 1.1rem 1.2rem 1.3rem;
-    border-radius: 18px;
-    background: var(--paper);
-    box-shadow: 0 20px 50px rgb(var(--shadow-rgb) / .35);
-}
-
-.cabinet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .8rem; }
-.cabinet-head h2 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 1.4rem; }
-.cabinet-count { font-size: .95rem; color: var(--ink-soft); font-weight: 500; margin-left: .3rem; }
-
-.chip-close {
-    width: 36px;
-    height: 36px;
-    border: 2px solid var(--mat-line);
-    border-radius: 10px;
-    background: var(--paper-raised);
-    color: var(--ink);
-    cursor: pointer;
-}
-
-.badge-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-
-.badge {
-    display: flex;
-    align-items: center;
-    gap: .8rem;
-    padding: .65rem .8rem;
-    border-radius: 12px;
-    background: var(--paper-raised);
-    border: 2px solid var(--mat-line);
-    color: var(--ink-soft);
-}
-
-.badge.is-earned { border-color: var(--flag-tile); background: var(--flag-tile-soft); color: var(--ink); }
-.badge-emoji { font-size: 1.6rem; width: 2rem; text-align: center; filter: grayscale(1); opacity: .6; }
-.badge.is-earned .badge-emoji { filter: none; opacity: 1; }
-.badge-text { display: flex; flex-direction: column; gap: 1px; line-height: 1.35; }
-.badge-text strong { font-family: var(--font-display); font-weight: 600; color: var(--ink); }
-.badge:not(.is-earned) .badge-text strong { color: var(--ink-soft); }
-.badge-text span { font-size: .9rem; }
-
-.visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-}
-
 /* ---------- Stage layout ----------
    Desktop: level info, board and help on the left; the workshop down the right.
    Phones (below): one column with the board pinned to the top. */
@@ -448,102 +383,6 @@
 
 .mode-toggle button.is-on { background: var(--strong); color: var(--on-strong); }
 .mode-toggle button:disabled { cursor: default; }
-
-/* ---------- Code editor (Pro mode) ---------- */
-
-.editor {
-    --code-size: .9rem;
-    --code-line: 1.6;
-    display: flex;
-    align-items: flex-start;
-    border-radius: 12px;
-    background: var(--code-bg);
-    overflow-x: auto;
-    border: 2px solid transparent;
-}
-
-.editor:focus-within { border-color: var(--highlight); }
-.editor.has-error { border-color: var(--danger); }
-
-.gutter {
-    flex: none;
-    display: flex;
-    flex-direction: column;
-    padding: 12px 6px 12px 10px;
-    text-align: right;
-    font-family: var(--font-code);
-    font-size: var(--code-size);
-    line-height: var(--code-line);
-    color: var(--code-muted);
-    user-select: none;
-}
-
-.gutter span { padding: 0 4px; border-radius: 4px; }
-.gutter .is-error  { background: var(--danger); color: var(--on-color); }
-.gutter .is-failed { background: var(--danger); color: var(--on-color); }
-.gutter .is-active { background: var(--highlight); color: var(--on-highlight); }
-
-.editor-input,
-.editor-view {
-    flex: 1;
-    min-width: 0;
-    margin: 0;
-    padding: 12px 14px 12px 6px;
-    border: 0;
-    background: transparent;
-    color: var(--code-ink);
-    font-family: var(--font-code);
-    font-size: var(--code-size);
-    line-height: var(--code-line);
-    white-space: pre;
-    tab-size: 4;
-}
-
-.editor-input {
-    resize: none;
-    overflow: hidden;
-    outline: none;
-    caret-color: var(--highlight);
-}
-
-.editor-input::placeholder { color: var(--code-muted); }
-
-.editor-line {
-    display: block;
-    width: max-content;
-    min-width: 100%;
-    min-height: calc(var(--code-size) * var(--code-line));
-    padding-right: 14px;
-}
-.editor-line.is-active { background: var(--highlight); color: var(--on-highlight); }
-.editor-line.is-failed { background: var(--danger); color: var(--on-color); }
-
-.line-note { font-style: italic; }
-.line-note.yes  { color: var(--code-yes); }
-.line-note.no   { color: var(--code-no); }
-.line-note.pass { color: var(--code-pass); }
-.editor-line.is-active .line-note { color: var(--on-highlight); opacity: .75; }
-
-.code-error {
-    margin: .6rem 0 0;
-    padding: .6rem .8rem;
-    border-radius: 10px;
-    background: var(--danger-soft);
-    border-left: 4px solid var(--danger);
-    line-height: 1.45;
-}
-
-.code-error-note {
-    margin: .4rem 0 0;
-    font-size: .9rem;
-    color: var(--danger-shadow);
-}
-
-.code-help {
-    margin: .5rem 0 0;
-    font-size: .85rem;
-    color: var(--ink-soft);
-}
 
 .palette-code {
     font-family: var(--font-code);
@@ -806,9 +645,6 @@
 
     .bridge .code { font-size: .8rem; }
 
-    /* 16px stops iPhones zooming in when the editor gets focus. */
-    .editor { --code-size: 16px; --code-line: 1.45; }
-    .code-help { display: none; }
     .mode-toggle button { padding: .3rem .7rem; }
 }
 
